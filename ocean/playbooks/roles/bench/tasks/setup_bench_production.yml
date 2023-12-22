@@ -1,0 +1,28 @@
+---
+- name: Setup production
+  become: yes
+  become_user: root
+  command: ocean setup production {{ frappe_user }} --yes
+  args:
+    chdir: '{{ bench_path }}'
+
+- name: Setup Sudoers
+  become: yes
+  become_user: root
+  command: ocean setup sudoers {{ frappe_user }}
+  args:
+    chdir: '{{ bench_path }}'
+
+- name: Set correct permissions on ocean.log
+  file:
+    path: '{{ bench_path }}/logs/ocean.log'
+    owner: '{{ frappe_user }}'
+    group: '{{ frappe_user }}'
+  become: yes
+  become_user: root
+
+- name: Restart the ocean
+  command: ocean restart
+  args:
+    chdir: '{{ bench_path }}'
+...
