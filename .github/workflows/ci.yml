@@ -50,7 +50,7 @@ jobs:
           python -m pip install -U --no-cache-dir --force-reinstall urllib3 pyOpenSSL ndg-httpsclient pyasn1 wheel setuptools pip;
           python -m pip install -U -e ${GITHUB_WORKSPACE};
 
-      - run: python ${GITHUB_WORKSPACE}/oceanoceanocean/tests/test_init.py TestBenchInit.basic
+      - run: python ${GITHUB_WORKSPACE}/ocean/tests/test_init.py TestBenchInit.basic
 
   production_setup:
     runs-on: ubuntu-latest
@@ -87,7 +87,7 @@ jobs:
           python -m pip install -U --no-cache-dir --force-reinstall urllib3 pyOpenSSL ndg-httpsclient pyasn1 wheel setuptools pip;
           python -m pip install -U -e ${GITHUB_WORKSPACE};
 
-      - run: python oceanoceanocean/tests/test_setup_production.py TestSetupProduction.production
+      - run: python ocean/tests/test_setup_production.py TestSetupProduction.production
 
   tests:
     runs-on: ubuntu-latest
@@ -133,4 +133,4 @@ jobs:
           python -m pip install -U --no-cache-dir --force-reinstall urllib3 pyOpenSSL ndg-httpsclient pyasn1 wheel setuptools pip;
           python -m pip install -U -e ${GITHUB_WORKSPACE};
 
-      - run: python -m unittest -v oceanoceanocean.tests.test_utils && python -m unittest -v oceanoceanocean.tests.test_init
+      - run: python -m unittest -v ocean.tests.test_utils && python -m unittest -v ocean.tests.test_init
