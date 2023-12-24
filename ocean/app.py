@@ -18,7 +18,7 @@ import git
 
 # imports - module imports
 import ocean
-from ocean.exceptions import NotInoceanDirectoryError
+from ocean.exceptions import NotInOceanDirectoryError
 from ocean.utils import (
 	UNSET_ARG,
 	fetch_details_from_tag,
@@ -33,7 +33,7 @@ from ocean.utils.ocean import build_assets, install_python_dev_dependencies
 from ocean.utils.render import step
 
 if typing.TYPE_CHECKING:
-	from ocean.ocean import ocean
+	from ocean.ocean import Ocean
 
 
 logger = logging.getLogger(ocean.PROJECT_NAME)
@@ -164,7 +164,7 @@ class App(AppMeta):
 		self,
 		name: str,
 		branch: str = None,
-		ocean: "ocean" = None,
+		ocean: "Ocean" = None,
 		soft_link: bool = False,
 		*args,
 		**kwargs,
@@ -274,9 +274,9 @@ class App(AppMeta):
 			return []
 
 	def update_app_state(self):
-		from ocean.ocean import ocean
+		from ocean.ocean import Ocean
 
-		ocean = ocean(self.ocean.name)
+		ocean = Ocean(self.ocean.name)
 		ocean.apps.sync(
 			app_dir=self.app_name,
 			app_name=self.name,
@@ -285,7 +285,7 @@ class App(AppMeta):
 		)
 
 
-def make_resolution_plan(app: App, ocean: "ocean"):
+def make_resolution_plan(app: App, ocean: "Ocean"):
 	"""
 	decide what apps and versions to install and in what order
 	"""
@@ -356,10 +356,10 @@ def get_app(
 	"""
 	import ocean as _ocean
 	import ocean.cli as ocean_cli
-	from ocean.ocean import ocean
+	from ocean.ocean import Ocean
 	from ocean.utils.app import check_existing_dir
 
-	ocean = ocean(ocean_path)
+	ocean = Ocean(ocean_path)
 	app = App(git_url, branch=branch, ocean=ocean, soft_link=soft_link)
 	git_url = app.url
 	repo_name = app.repo
@@ -382,9 +382,9 @@ def get_app(
 
 	if not is_ocean_directory(ocean_path):
 		if not init_ocean:
-			raise NotInoceanDirectoryError(
+			raise NotInOceanDirectoryError(
 				f"{os.path.realpath(ocean_path)} is not a valid ocean directory. "
-				"Run with --init-ocean if you'd like to create a ocean too."
+				"Run with --init-ocean if you'd like to create a Ocean too."
 			)
 
 		from ocean.utils.system import init
@@ -516,7 +516,7 @@ def install_resolved_deps(
 
 def new_app(app, no_git=None, ocean_path="."):
 	if ocean.FRAPPE_VERSION in (0, None):
-		raise NotInoceanDirectoryError(
+		raise NotInOceanDirectoryError(
 			f"{os.path.realpath(ocean_path)} is not a valid ocean directory."
 		)
 
@@ -552,7 +552,7 @@ def install_app(
 	resolution=UNSET_ARG,
 ):
 	import ocean.cli as ocean_cli
-	from ocean.ocean import ocean
+	from ocean.ocean import Ocean
 
 	install_text = f"Installing {app}"
 	click.secho(install_text, fg="yellow")
@@ -561,7 +561,7 @@ def install_app(
 	if resolution == UNSET_ARG:
 		resolution = []
 
-	ocean = ocean(ocean_path)
+	ocean = Ocean(ocean_path)
 	conf = ocean.conf
 
 	verbose = ocean_cli.verbose or verbose
@@ -594,10 +594,10 @@ def install_app(
 
 def pull_apps(apps=None, ocean_path=".", reset=False):
 	"""Check all apps if there no local changes, pull"""
-	from ocean.ocean import ocean
+	from ocean.ocean import Ocean
 	from ocean.utils.app import get_current_branch, get_remote
 
-	ocean = ocean(ocean_path)
+	ocean = Ocean(ocean_path)
 	rebase = "--rebase" if ocean.conf.get("rebase_on_pull") else ""
 	apps = apps or ocean.apps
 	excluded_apps = ocean.excluded_apps
