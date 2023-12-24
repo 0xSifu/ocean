@@ -8,14 +8,14 @@ import string
 import click
 
 # imports - module imports
-import bench
-import bench.config
-from bench.bench import Bench
-from bench.utils import get_bench_name
+import ocean
+import ocean.config
+from ocean.ocean import Ocean
+from ocean.utils import get_ocean_name
 
 
-def make_nginx_conf(bench_path, yes=False, logging=None, log_format=None):
-	conf_path = os.path.join(bench_path, "config", "nginx.conf")
+def make_nginx_conf(ocean_path, yes=False, logging=None, log_format=None):
+	conf_path = os.path.join(ocean_path, "config", "nginx.conf")
 
 	if not yes and os.path.exists(conf_path):
 		if not click.confirm(
@@ -23,13 +23,13 @@ def make_nginx_conf(bench_path, yes=False, logging=None, log_format=None):
 		):
 			return
 
-	template = bench.config.env().get_template("nginx.conf")
-	bench_path = os.path.abspath(bench_path)
-	sites_path = os.path.join(bench_path, "sites")
+	template = ocean.config.env().get_template("nginx.conf")
+	ocean_path = os.path.abspath(ocean_path)
+	sites_path = os.path.join(ocean_path, "sites")
 
-	config = Bench(bench_path).conf
-	sites = prepare_sites(config, bench_path)
-	bench_name = get_bench_name(bench_path)
+	config = Ocean(ocean_path).conf
+	sites = prepare_sites(config, ocean_path)
+	ocean_name = get_ocean_name(ocean_path)
 
 	allow_rate_limiting = config.get("allow_rate_limiting", False)
 
@@ -39,7 +39,7 @@ def make_nginx_conf(bench_path, yes=False, logging=None, log_format=None):
 		"sites": sites,
 		"webserver_port": config.get("webserver_port"),
 		"socketio_port": config.get("socketio_port"),
-		"bench_name": bench_name,
+		"ocean_name": ocean_name,
 		"error_pages": get_error_pages(),
 		"allow_rate_limiting": allow_rate_limiting,
 		# for nginx map variable
@@ -55,7 +55,7 @@ def make_nginx_conf(bench_path, yes=False, logging=None, log_format=None):
 	if allow_rate_limiting:
 		template_vars.update(
 			{
-				"bench_name_hash": hashlib.sha256(bench_name).hexdigest()[:16],
+				"ocean_name_hash": hashlib.sha256(ocean_name).hexdigest()[:16],
 				"limit_conn_shared_memory": get_limit_conn_shared_memory(),
 			}
 		)
@@ -66,46 +66,46 @@ def make_nginx_conf(bench_path, yes=False, logging=None, log_format=None):
 		f.write(nginx_conf)
 
 
-def make_bench_manager_nginx_conf(bench_path, yes=False, port=23624, domain=None):
-	from bench.config.site_config import get_site_config
+def make_ocean_manager_nginx_conf(ocean_path, yes=False, port=23624, domain=None):
+	from ocean.config.site_config import get_site_config
 
-	template = bench.config.env().get_template("bench_manager_nginx.conf")
-	bench_path = os.path.abspath(bench_path)
-	sites_path = os.path.join(bench_path, "sites")
+	template = ocean.config.env().get_template("ocean_manager_nginx.conf")
+	ocean_path = os.path.abspath(ocean_path)
+	sites_path = os.path.join(ocean_path, "sites")
 
-	config = Bench(bench_path).conf
-	site_config = get_site_config(domain, bench_path=bench_path)
-	bench_name = get_bench_name(bench_path)
+	config = Ocean(ocean_path).conf
+	site_config = get_site_config(domain, ocean_path=ocean_path)
+	ocean_name = get_ocean_name(ocean_path)
 
 	template_vars = {
 		"port": port,
 		"domain": domain,
-		"bench_manager_site_name": "bench-manager.local",
+		"ocean_manager_site_name": "ocean-manager.local",
 		"sites_path": sites_path,
 		"http_timeout": config.get("http_timeout"),
 		"webserver_port": config.get("webserver_port"),
 		"socketio_port": config.get("socketio_port"),
-		"bench_name": bench_name,
+		"ocean_name": ocean_name,
 		"error_pages": get_error_pages(),
 		"ssl_certificate": site_config.get("ssl_certificate"),
 		"ssl_certificate_key": site_config.get("ssl_certificate_key"),
 	}
 
-	bench_manager_nginx_conf = template.render(**template_vars)
+	ocean_manager_nginx_conf = template.render(**template_vars)
 
-	conf_path = os.path.join(bench_path, "config", "nginx.conf")
+	conf_path = os.path.join(ocean_path, "config", "nginx.conf")
 
 	if not yes and os.path.exists(conf_path):
 		click.confirm(
-			"nginx.conf already exists and bench-manager configuration will be appended to it. Do you want to continue?",
+			"nginx.conf already exists and ocean-manager configuration will be appended to it. Do you want to continue?",
 			abort=True,
 		)
 
 	with open(conf_path, "a") as myfile:
-		myfile.write(bench_manager_nginx_conf)
+		myfile.write(ocean_manager_nginx_conf)
 
 
-def prepare_sites(config, bench_path):
+def prepare_sites(config, ocean_path):
 	sites = {
 		"that_use_port": [],
 		"that_use_dns": [],
@@ -119,7 +119,7 @@ def prepare_sites(config, bench_path):
 	dns_multitenant = config.get("dns_multitenant")
 
 	shared_port_exception_found = False
-	sites_configs = get_sites_with_config(bench_path=bench_path)
+	sites_configs = get_sites_with_config(ocean_path=ocean_path)
 
 	# preload all preset site ports to avoid conflicts
 
@@ -193,19 +193,19 @@ def prepare_sites(config, bench_path):
 	return sites
 
 
-def get_sites_with_config(bench_path):
-	from bench.bench import Bench
-	from bench.config.site_config import get_site_config
+def get_sites_with_config(ocean_path):
+	from ocean.ocean import Ocean
+	from ocean.config.site_config import get_site_config
 
-	bench = Bench(bench_path)
-	sites = bench.sites
-	conf = bench.conf
+	ocean = Ocean(ocean_path)
+	sites = ocean.sites
+	conf = ocean.conf
 	dns_multitenant = conf.get("dns_multitenant")
 
 	ret = []
 	for site in sites:
 		try:
-			site_config = get_site_config(site, bench_path=bench_path)
+			site_config = get_site_config(site, ocean_path=ocean_path)
 		except Exception as e:
 			strict_nginx = conf.get("strict_nginx")
 			if strict_nginx:
@@ -243,12 +243,12 @@ def get_sites_with_config(bench_path):
 				domain["name"] = site
 				ret.append(domain)
 
-	use_wildcard_certificate(bench_path, ret)
+	use_wildcard_certificate(ocean_path, ret)
 
 	return ret
 
 
-def use_wildcard_certificate(bench_path, ret):
+def use_wildcard_certificate(ocean_path, ret):
 	"""
 	stored in common_site_config.json as:
 	"wildcard": {
@@ -257,9 +257,9 @@ def use_wildcard_certificate(bench_path, ret):
 	        "ssl_certificate_key": "/path/to/erpnext.com.key"
 	}
 	"""
-	from bench.bench import Bench
+	from ocean.ocean import Ocean
 
-	config = Bench(bench_path).conf
+	config = Ocean(ocean_path).conf
 	wildcard = config.get("wildcard")
 
 	if not wildcard:
@@ -287,8 +287,8 @@ def use_wildcard_certificate(bench_path, ret):
 
 
 def get_error_pages():
-	bench_app_path = os.path.abspath(bench.__path__[0])
-	templates = os.path.join(bench_app_path, "config", "templates")
+	ocean_app_path = os.path.abspath(ocean.__path__[0])
+	templates = os.path.join(ocean_app_path, "config", "templates")
 
 	return {502: os.path.join(templates, "502.html")}
 

@@ -14,8 +14,8 @@ from typing import List, Tuple
 import click
 
 # imports - module imports
-from bench import PROJECT_NAME, VERSION
-from bench.exceptions import (
+from ocean import PROJECT_NAME, VERSION
+from ocean.exceptions import (
 	AppNotInstalledError,
 	CommandFailedError,
 	InvalidRemoteException,
@@ -23,19 +23,19 @@ from bench.exceptions import (
 
 logger = logging.getLogger(PROJECT_NAME)
 paths_in_app = ("hooks.py", "modules.txt", "patches.txt")
-paths_in_bench = ("apps", "sites", "config", "logs", "config/pids")
+paths_in_ocean = ("apps", "sites", "config", "logs", "config/pids")
 sudoers_file = "/etc/sudoers.d/frappe"
 UNSET_ARG = object()
 
 
-def is_bench_directory(directory=os.path.curdir):
-	is_bench = True
+def is_ocean_directory(directory=os.path.curdir):
+	is_ocean = True
 
-	for folder in paths_in_bench:
+	for folder in paths_in_ocean:
 		path = os.path.abspath(os.path.join(directory, folder))
-		is_bench = is_bench and os.path.exists(path)
+		is_ocean = is_ocean and os.path.exists(path)
 
-	return is_bench
+	return is_ocean
 
 
 def is_frappe_app(directory: str) -> bool:
@@ -80,8 +80,8 @@ def is_valid_frappe_branch(frappe_path: str, frappe_branch: str):
 
 
 def log(message, level=0, no_log=False, stderr=False):
-	import bench
-	import bench.cli
+	import ocean
+	import ocean.cli
 
 	levels = {
 		0: ("blue", "INFO"),  # normal
@@ -92,8 +92,8 @@ def log(message, level=0, no_log=False, stderr=False):
 
 	color, prefix = levels.get(level, levels[0])
 
-	if bench.cli.from_command_line and bench.cli.dynamic_feed:
-		bench.LOG_BUFFER.append({"prefix": prefix, "message": message, "color": color})
+	if ocean.cli.from_command_line and ocean.cli.dynamic_feed:
+		ocean.LOG_BUFFER.append({"prefix": prefix, "message": message, "color": color})
 
 	if no_log:
 		click.secho(message, fg=color, err=stderr)
@@ -113,7 +113,7 @@ def check_latest_version():
 	from semantic_version import Version
 
 	try:
-		pypi_request = requests.get("https://pypi.org/pypi/frappe-bench/json")
+		pypi_request = requests.get("https://pypi.org/pypi/frappe-ocean/json")
 	except Exception:
 		# Exceptions thrown are defined in requests.exceptions
 		# ignore checking on all Exceptions
@@ -126,7 +126,7 @@ def check_latest_version():
 
 		if pypi_version > local_version:
 			log(
-				f"A newer version of bench is available: {local_version} → {pypi_version}",
+				f"A newer version of ocean is available: {local_version} → {pypi_version}",
 				stderr=True,
 			)
 
@@ -170,7 +170,7 @@ def which(executable: str, raise_err: bool = False) -> str:
 	return exec_
 
 
-def setup_logging(bench_path=".") -> logging.Logger:
+def setup_logging(ocean_path=".") -> logging.Logger:
 	LOG_LEVEL = 15
 	logging.addLevelName(LOG_LEVEL, "LOG")
 
@@ -180,8 +180,8 @@ def setup_logging(bench_path=".") -> logging.Logger:
 
 	logging.Logger.log = logv
 
-	if os.path.exists(os.path.join(bench_path, "logs")):
-		log_file = os.path.join(bench_path, "logs", "bench.log")
+	if os.path.exists(os.path.join(ocean_path, "logs")):
+		log_file = os.path.join(ocean_path, "logs", "ocean.log")
 		hdlr = logging.FileHandler(log_file)
 	else:
 		hdlr = logging.NullHandler()
@@ -230,12 +230,12 @@ def is_root():
 
 
 def run_frappe_cmd(*args, **kwargs):
-	from bench.cli import from_command_line
-	from bench.utils.bench import get_env_cmd
+	from ocean.cli import from_command_line
+	from ocean.utils.ocean import get_env_cmd
 
-	bench_path = kwargs.get("bench_path", ".")
-	f = get_env_cmd("python", bench_path=bench_path)
-	sites_dir = os.path.join(bench_path, "sites")
+	ocean_path = kwargs.get("ocean_path", ".")
+	f = get_env_cmd("python", ocean_path=ocean_path)
+	sites_dir = os.path.join(ocean_path, "sites")
 
 	is_async = not from_command_line
 	if is_async:
@@ -244,7 +244,7 @@ def run_frappe_cmd(*args, **kwargs):
 		stderr = stdout = None
 
 	p = subprocess.Popen(
-		(f, "-m", "frappe.utils.bench_helper", "frappe") + args,
+		(f, "-m", "frappe.utils.ocean_helper", "frappe") + args,
 		cwd=sites_dir,
 		stdout=stdout,
 		stderr=stderr,
@@ -285,28 +285,28 @@ def log_line(data, stream):
 	return sys.stdout.write(data)
 
 
-def get_bench_name(bench_path):
-	return os.path.basename(os.path.abspath(bench_path))
+def get_ocean_name(ocean_path):
+	return os.path.basename(os.path.abspath(ocean_path))
 
 
-def set_git_remote_url(git_url, bench_path="."):
+def set_git_remote_url(git_url, ocean_path="."):
 	"Set app remote git url"
-	from bench.app import get_repo_dir
-	from bench.bench import Bench
+	from ocean.app import get_repo_dir
+	from ocean.ocean import Ocean
 
 	app = git_url.rsplit("/", 1)[1].rsplit(".", 1)[0]
 
-	if app not in Bench(bench_path).apps:
+	if app not in Ocean(ocean_path).apps:
 		raise AppNotInstalledError(f"No app named {app}")
 
-	app_dir = get_repo_dir(app, bench_path=bench_path)
+	app_dir = get_repo_dir(app, ocean_path=ocean_path)
 
 	if os.path.exists(os.path.join(app_dir, ".git")):
 		exec_cmd(f"git remote set-url upstream {git_url}", cwd=app_dir)
 
 
 def run_playbook(playbook_name, extra_vars=None, tag=None):
-	import bench
+	import ocean
 
 	if not which("ansible"):
 		print(
@@ -322,10 +322,10 @@ def run_playbook(playbook_name, extra_vars=None, tag=None):
 	if tag:
 		args.extend(["-t", tag])
 
-	subprocess.check_call(args, cwd=os.path.join(bench.__path__[0], "playbooks"))
+	subprocess.check_call(args, cwd=os.path.join(ocean.__path__[0], "playbooks"))
 
 
-def find_benches(directory: str = None) -> List:
+def find_oceanes(directory: str = None) -> List:
 	if not directory:
 		directory = os.path.expanduser("~")
 	elif os.path.exists(directory):
@@ -334,30 +334,30 @@ def find_benches(directory: str = None) -> List:
 		log("Directory doesn't exist", level=2)
 		sys.exit(1)
 
-	if is_bench_directory(directory):
+	if is_ocean_directory(directory):
 		if os.path.curdir == directory:
-			print("You are in a bench directory!")
+			print("You are in a ocean directory!")
 		else:
-			print(f"{directory} is a bench directory!")
+			print(f"{directory} is a ocean directory!")
 		return
 
-	benches = []
+	oceanes = []
 
 	try:
 		sub_directories = os.listdir(directory)
 	except PermissionError:
-		return benches
+		return oceanes
 
 	for sub in sub_directories:
 		sub = os.path.join(directory, sub)
 		if os.path.isdir(sub) and not os.path.islink(sub):
-			if is_bench_directory(sub):
+			if is_ocean_directory(sub):
 				print(f"{sub} found!")
-				benches.append(sub)
+				oceanes.append(sub)
 			else:
-				benches.extend(find_benches(sub))
+				oceanes.extend(find_oceanes(sub))
 
-	return benches
+	return oceanes
 
 
 def is_dist_editable(dist: str) -> bool:
@@ -369,9 +369,9 @@ def is_dist_editable(dist: str) -> bool:
 	return False
 
 
-def find_parent_bench(path: str) -> str:
-	"""Checks if parent directories are benches"""
-	if is_bench_directory(directory=path):
+def find_parent_ocean(path: str) -> str:
+	"""Checks if parent directories are oceanes"""
+	if is_ocean_directory(directory=path):
 		return path
 
 	home_path = os.path.expanduser("~")
@@ -380,22 +380,22 @@ def find_parent_bench(path: str) -> str:
 	if path not in {home_path, root_path}:
 		# NOTE: the os.path.split assumes that given path is absolute
 		parent_dir = os.path.split(path)[0]
-		return find_parent_bench(parent_dir)
+		return find_parent_ocean(parent_dir)
 
 
-def get_env_frappe_commands(bench_path=".") -> List:
+def get_env_frappe_commands(ocean_path=".") -> List:
 	"""Caches all available commands (even custom apps) via Frappe
-	Default caching behaviour: generated the first time any command (for a specific bench directory)
+	Default caching behaviour: generated the first time any command (for a specific ocean directory)
 	"""
-	from bench.utils.bench import get_env_cmd
+	from ocean.utils.ocean import get_env_cmd
 
-	python = get_env_cmd("python", bench_path=bench_path)
-	sites_path = os.path.join(bench_path, "sites")
+	python = get_env_cmd("python", ocean_path=ocean_path)
+	sites_path = os.path.join(ocean_path, "sites")
 
 	try:
 		return json.loads(
 			get_cmd_output(
-				f"{python} -m frappe.utils.bench_helper get-frappe-commands", cwd=sites_path
+				f"{python} -m frappe.utils.ocean_helper get-frappe-commands", cwd=sites_path
 			)
 		)
 
@@ -497,7 +497,7 @@ def get_traceback() -> str:
 class _dict(dict):
 	"""dict like object that exposes keys as attributes"""
 
-	# bench port of frappe._dict
+	# ocean port of frappe._dict
 	def __getattr__(self, key):
 		ret = self.get(key)
 		# "__deepcopy__" exception added to fix frappe#14833 via DFP
@@ -526,13 +526,13 @@ class _dict(dict):
 def get_cmd_from_sysargv():
 	"""Identify and segregate tokens to options and command
 
-	For Command: `bench --profile --site frappeframework.com migrate --no-backup`
-	sys.argv: ["/home/frappe/.local/bin/bench", "--profile", "--site", "frappeframework.com", "migrate", "--no-backup"]
+	For Command: `ocean --profile --site frappeframework.com migrate --no-backup`
+	sys.argv: ["/home/frappe/.local/bin/ocean", "--profile", "--site", "frappeframework.com", "migrate", "--no-backup"]
 	Actual command run: migrate
 
 	"""
-	# context is passed as options to frappe's bench_helper
-	from bench.bench import Bench
+	# context is passed as options to frappe's ocean_helper
+	from ocean.ocean import Ocean
 
 	frappe_context = _dict(params={"--site"}, flags={"--verbose", "--profile", "--force"})
 	cmd_from_ctx = None
@@ -551,7 +551,7 @@ def get_cmd_from_sysargv():
 			skip_next = True
 			continue
 
-		if sys_argv.index(arg) == 0 and arg in Bench(".").apps:
+		if sys_argv.index(arg) == 0 and arg in Ocean(".").apps:
 			continue
 
 		cmd_from_ctx = arg

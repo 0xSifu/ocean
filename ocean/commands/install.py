@@ -1,6 +1,6 @@
 # imports - module imports
-from bench.utils import run_playbook
-from bench.utils.system import setup_sudoers
+from ocean.utils import run_playbook
+from ocean.utils.system import setup_sudoers
 
 # imports - third party imports
 import click

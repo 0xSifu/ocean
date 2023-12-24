@@ -2,22 +2,22 @@
 import click
 
 # imports - module imports
-from bench.app import pull_apps
-from bench.utils.bench import post_upgrade, patch_sites, build_assets
+from ocean.app import pull_apps
+from ocean.utils.ocean import post_upgrade, patch_sites, build_assets
 
 
 @click.command(
 	"update",
-	help="Performs an update operation on current bench. Without any flags will backup, pull, setup requirements, build, run patches and restart bench. Using specific flags will only do certain tasks instead of all",
+	help="Performs an update operation on current ocean. Without any flags will backup, pull, setup requirements, build, run patches and restart ocean. Using specific flags will only do certain tasks instead of all",
 )
-@click.option("--pull", is_flag=True, help="Pull updates for all the apps in bench")
+@click.option("--pull", is_flag=True, help="Pull updates for all the apps in ocean")
 @click.option("--apps", type=str)
-@click.option("--patch", is_flag=True, help="Run migrations for all sites in the bench")
-@click.option("--build", is_flag=True, help="Build JS and CSS assets for the bench")
+@click.option("--patch", is_flag=True, help="Run migrations for all sites in the ocean")
+@click.option("--build", is_flag=True, help="Build JS and CSS assets for the ocean")
 @click.option(
 	"--requirements",
 	is_flag=True,
-	help="Update requirements. If run alone, equivalent to `bench setup requirements`",
+	help="Update requirements. If run alone, equivalent to `ocean setup requirements`",
 )
 @click.option(
 	"--restart-supervisor", is_flag=True, help="Restart supervisor processes after update"
@@ -54,7 +54,7 @@ def update(
 	force,
 	reset,
 ):
-	from bench.utils.bench import update
+	from ocean.utils.ocean import update
 
 	update(
 		pull=pull,
@@ -88,7 +88,7 @@ def retry_upgrade(version):
 @click.argument("apps", nargs=-1)
 @click.option("--upgrade", is_flag=True)
 def switch_to_branch(branch, apps, upgrade=False):
-	from bench.utils.app import switch_to_branch
+	from ocean.utils.app import switch_to_branch
 
 	switch_to_branch(branch=branch, apps=list(apps), upgrade=upgrade)
 
@@ -96,6 +96,6 @@ def switch_to_branch(branch, apps, upgrade=False):
 @click.command("switch-to-develop")
 def switch_to_develop(upgrade=False):
 	"Switch frappe and erpnext to develop branch"
-	from bench.utils.app import switch_to_develop
+	from ocean.utils.app import switch_to_develop
 
 	switch_to_develop(apps=["frappe", "erpnext"])

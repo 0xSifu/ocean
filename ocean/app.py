@@ -17,26 +17,26 @@ import click
 import git
 
 # imports - module imports
-import bench
-from bench.exceptions import NotInBenchDirectoryError
-from bench.utils import (
+import ocean
+from ocean.exceptions import NotInoceanDirectoryError
+from ocean.utils import (
 	UNSET_ARG,
 	fetch_details_from_tag,
 	get_available_folder_name,
-	is_bench_directory,
+	is_ocean_directory,
 	is_git_url,
 	is_valid_frappe_branch,
 	log,
 	run_frappe_cmd,
 )
-from bench.utils.bench import build_assets, install_python_dev_dependencies
-from bench.utils.render import step
+from ocean.utils.ocean import build_assets, install_python_dev_dependencies
+from ocean.utils.render import step
 
 if typing.TYPE_CHECKING:
-	from bench.bench import Bench
+	from ocean.ocean import ocean
 
 
-logger = logging.getLogger(bench.PROJECT_NAME)
+logger = logging.getLogger(ocean.PROJECT_NAME)
 
 
 class AppMeta:
@@ -82,8 +82,8 @@ class AppMeta:
 			self.repo = self.app_name = self.name
 			return
 		# fetch meta from installed apps
-		if self.bench and os.path.exists(os.path.join(self.bench.name, "apps", self.name)):
-			self.mount_path = os.path.join(self.bench.name, "apps", self.name)
+		if self.ocean and os.path.exists(os.path.join(self.ocean.name, "apps", self.name)):
+			self.mount_path = os.path.join(self.ocean.name, "apps", self.name)
 			self.from_apps = True
 			self._setup_details_from_mounted_disk()
 
@@ -164,12 +164,12 @@ class App(AppMeta):
 		self,
 		name: str,
 		branch: str = None,
-		bench: "Bench" = None,
+		ocean: "ocean" = None,
 		soft_link: bool = False,
 		*args,
 		**kwargs,
 	):
-		self.bench = bench
+		self.ocean = ocean
 		self.soft_link = soft_link
 		self.required_by = None
 		self.local_resolution = []
@@ -178,7 +178,7 @@ class App(AppMeta):
 	@step(title="Fetching App {repo}", success="App {repo} Fetched")
 	def get(self):
 		branch = f"--branch {self.tag}" if self.tag else ""
-		shallow = "--depth 1" if self.bench.shallow_clone else ""
+		shallow = "--depth 1" if self.ocean.shallow_clone else ""
 
 		if not self.soft_link:
 			cmd = "git clone"
@@ -191,9 +191,9 @@ class App(AppMeta):
 		click.secho(fetch_txt, fg="yellow")
 		logger.log(fetch_txt)
 
-		self.bench.run(
+		self.ocean.run(
 			f"{cmd} {args}",
-			cwd=os.path.join(self.bench.name, "apps"),
+			cwd=os.path.join(self.ocean.name, "apps"),
 		)
 
 	@step(title="Archiving App {repo}", success="App {repo} Archived")
@@ -225,14 +225,14 @@ class App(AppMeta):
 		skip_assets=False,
 		verbose=False,
 		resolved=False,
-		restart_bench=True,
+		restart_ocean=True,
 		ignore_resolution=False,
 	):
-		import bench.cli
-		from bench.utils.app import get_app_name
+		import ocean.cli
+		from ocean.utils.app import get_app_name
 
-		verbose = bench.cli.verbose or verbose
-		app_name = get_app_name(self.bench.name, self.app_name)
+		verbose = ocean.cli.verbose or verbose
+		app_name = get_app_name(self.ocean.name, self.app_name)
 		if not resolved and self.app_name != "frappe" and not ignore_resolution:
 			click.secho(
 				f"Ignoring dependencies of {self.name}. To install dependencies use --resolve-deps",
@@ -242,10 +242,10 @@ class App(AppMeta):
 		install_app(
 			app=app_name,
 			tag=self.tag,
-			bench_path=self.bench.name,
+			ocean_path=self.ocean.name,
 			verbose=verbose,
 			skip_assets=skip_assets,
-			restart_bench=restart_bench,
+			restart_ocean=restart_ocean,
 			resolution=self.local_resolution,
 		)
 
@@ -256,10 +256,10 @@ class App(AppMeta):
 
 	@step(title="Uninstalling App {repo}", success="App {repo} Uninstalled")
 	def uninstall(self):
-		self.bench.run(f"{self.bench.python} -m pip uninstall -y {self.name}")
+		self.ocean.run(f"{self.ocean.python} -m pip uninstall -y {self.name}")
 
 	def _get_dependencies(self):
-		from bench.utils.app import get_required_deps, required_apps_from_hooks
+		from ocean.utils.app import get_required_deps, required_apps_from_hooks
 
 		if self.on_disk:
 			required_deps = os.path.join(self.mount_path, self.app_name, "hooks.py")
@@ -274,10 +274,10 @@ class App(AppMeta):
 			return []
 
 	def update_app_state(self):
-		from bench.bench import Bench
+		from ocean.ocean import ocean
 
-		bench = Bench(self.bench.name)
-		bench.apps.sync(
+		ocean = ocean(self.ocean.name)
+		ocean.apps.sync(
 			app_dir=self.app_name,
 			app_name=self.name,
 			branch=self.tag,
@@ -285,7 +285,7 @@ class App(AppMeta):
 		)
 
 
-def make_resolution_plan(app: App, bench: "Bench"):
+def make_resolution_plan(app: App, ocean: "ocean"):
 	"""
 	decide what apps and versions to install and in what order
 	"""
@@ -293,83 +293,83 @@ def make_resolution_plan(app: App, bench: "Bench"):
 	resolution[app.app_name] = app
 
 	for app_name in app._get_dependencies():
-		dep_app = App(app_name, bench=bench)
+		dep_app = App(app_name, ocean=ocean)
 		is_valid_frappe_branch(dep_app.url, dep_app.branch)
 		dep_app.required_by = app.name
 		if dep_app.app_name in resolution:
 			click.secho(f"{dep_app.app_name} is already resolved skipping", fg="yellow")
 			continue
 		resolution[dep_app.app_name] = dep_app
-		resolution.update(make_resolution_plan(dep_app, bench))
+		resolution.update(make_resolution_plan(dep_app, ocean))
 		app.local_resolution = [repo_name for repo_name, _ in reversed(resolution.items())]
 	return resolution
 
 
-def get_excluded_apps(bench_path="."):
+def get_excluded_apps(ocean_path="."):
 	try:
-		with open(os.path.join(bench_path, "sites", "excluded_apps.txt")) as f:
+		with open(os.path.join(ocean_path, "sites", "excluded_apps.txt")) as f:
 			return f.read().strip().split("\n")
 	except OSError:
 		return []
 
 
-def add_to_excluded_apps_txt(app, bench_path="."):
+def add_to_excluded_apps_txt(app, ocean_path="."):
 	if app == "frappe":
 		raise ValueError("Frappe app cannot be excluded from update")
 	if app not in os.listdir("apps"):
 		raise ValueError(f"The app {app} does not exist")
-	apps = get_excluded_apps(bench_path=bench_path)
+	apps = get_excluded_apps(ocean_path=ocean_path)
 	if app not in apps:
 		apps.append(app)
-		return write_excluded_apps_txt(apps, bench_path=bench_path)
+		return write_excluded_apps_txt(apps, ocean_path=ocean_path)
 
 
-def write_excluded_apps_txt(apps, bench_path="."):
-	with open(os.path.join(bench_path, "sites", "excluded_apps.txt"), "w") as f:
+def write_excluded_apps_txt(apps, ocean_path="."):
+	with open(os.path.join(ocean_path, "sites", "excluded_apps.txt"), "w") as f:
 		return f.write("\n".join(apps))
 
 
-def remove_from_excluded_apps_txt(app, bench_path="."):
-	apps = get_excluded_apps(bench_path=bench_path)
+def remove_from_excluded_apps_txt(app, ocean_path="."):
+	apps = get_excluded_apps(ocean_path=ocean_path)
 	if app in apps:
 		apps.remove(app)
-		return write_excluded_apps_txt(apps, bench_path=bench_path)
+		return write_excluded_apps_txt(apps, ocean_path=ocean_path)
 
 
 def get_app(
 	git_url,
 	branch=None,
-	bench_path=".",
+	ocean_path=".",
 	skip_assets=False,
 	verbose=False,
 	overwrite=False,
 	soft_link=False,
-	init_bench=False,
+	init_ocean=False,
 	resolve_deps=False,
 ):
-	"""bench get-app clones a Frappe App from remote (GitHub or any other git server),
-	and installs it on the current bench. This also resolves dependencies based on the
+	"""ocean get-app clones a Frappe App from remote (GitHub or any other git server),
+	and installs it on the current ocean. This also resolves dependencies based on the
 	apps' required_apps defined in the hooks.py file.
 
-	If the bench_path is not a bench directory, a new bench is created named using the
+	If the ocean_path is not a ocean directory, a new ocean is created named using the
 	git_url parameter.
 	"""
-	import bench as _bench
-	import bench.cli as bench_cli
-	from bench.bench import Bench
-	from bench.utils.app import check_existing_dir
+	import ocean as _ocean
+	import ocean.cli as ocean_cli
+	from ocean.ocean import ocean
+	from ocean.utils.app import check_existing_dir
 
-	bench = Bench(bench_path)
-	app = App(git_url, branch=branch, bench=bench, soft_link=soft_link)
+	ocean = ocean(ocean_path)
+	app = App(git_url, branch=branch, ocean=ocean, soft_link=soft_link)
 	git_url = app.url
 	repo_name = app.repo
 	branch = app.tag
-	bench_setup = False
-	restart_bench = not init_bench
+	ocean_setup = False
+	restart_ocean = not init_ocean
 	frappe_path, frappe_branch = None, None
 
 	if resolve_deps:
-		resolution = make_resolution_plan(app, bench)
+		resolution = make_resolution_plan(app, ocean)
 		click.secho("Following apps will be installed", fg="bright_blue")
 		for idx, app in enumerate(reversed(resolution.values()), start=1):
 			print(
@@ -380,26 +380,26 @@ def get_app(
 			# Todo: Make frappe a terminal dependency for all frappe apps.
 			frappe_path, frappe_branch = resolution["frappe"].url, resolution["frappe"].tag
 
-	if not is_bench_directory(bench_path):
-		if not init_bench:
-			raise NotInBenchDirectoryError(
-				f"{os.path.realpath(bench_path)} is not a valid bench directory. "
-				"Run with --init-bench if you'd like to create a Bench too."
+	if not is_ocean_directory(ocean_path):
+		if not init_ocean:
+			raise NotInoceanDirectoryError(
+				f"{os.path.realpath(ocean_path)} is not a valid ocean directory. "
+				"Run with --init-ocean if you'd like to create a ocean too."
 			)
 
-		from bench.utils.system import init
+		from ocean.utils.system import init
 
-		bench_path = get_available_folder_name(f"{app.repo}-bench", bench_path)
+		ocean_path = get_available_folder_name(f"{app.repo}-ocean", ocean_path)
 		init(
-			path=bench_path,
+			path=ocean_path,
 			frappe_path=frappe_path,
 			frappe_branch=frappe_branch or branch,
 		)
-		os.chdir(bench_path)
-		bench_setup = True
+		os.chdir(ocean_path)
+		ocean_setup = True
 
-	if bench_setup and bench_cli.from_command_line and bench_cli.dynamic_feed:
-		_bench.LOG_BUFFER.append(
+	if ocean_setup and ocean_cli.from_command_line and ocean_cli.dynamic_feed:
+		_ocean.LOG_BUFFER.append(
 			{
 				"message": f"Fetching App {repo_name}",
 				"prefix": click.style("⏼", fg="bright_yellow"),
@@ -410,15 +410,15 @@ def get_app(
 
 	if resolve_deps:
 		install_resolved_deps(
-			bench,
+			ocean,
 			resolution,
-			bench_path=bench_path,
+			ocean_path=ocean_path,
 			skip_assets=skip_assets,
 			verbose=verbose,
 		)
 		return
 
-	dir_already_exists, cloned_path = check_existing_dir(bench_path, repo_name)
+	dir_already_exists, cloned_path = check_existing_dir(ocean_path, repo_name)
 	to_clone = not dir_already_exists
 
 	# application directory already exists
@@ -441,29 +441,29 @@ def get_app(
 		or overwrite
 		or click.confirm("Do you want to reinstall the existing application?")
 	):
-		app.install(verbose=verbose, skip_assets=skip_assets, restart_bench=restart_bench)
+		app.install(verbose=verbose, skip_assets=skip_assets, restart_ocean=restart_ocean)
 
 
 def install_resolved_deps(
-	bench,
+	ocean,
 	resolution,
-	bench_path=".",
+	ocean_path=".",
 	skip_assets=False,
 	verbose=False,
 ):
-	from bench.utils.app import check_existing_dir
+	from ocean.utils.app import check_existing_dir
 
 	if "frappe" in resolution:
 		# Terminal dependency
 		del resolution["frappe"]
 
 	for repo_name, app in reversed(resolution.items()):
-		existing_dir, path_to_app = check_existing_dir(bench_path, repo_name)
+		existing_dir, path_to_app = check_existing_dir(ocean_path, repo_name)
 		if existing_dir:
 			is_compatible = False
 
 			try:
-				installed_branch = bench.apps.states[repo_name]["resolution"]["branch"].strip()
+				installed_branch = ocean.apps.states[repo_name]["resolution"]["branch"].strip()
 			except Exception:
 				installed_branch = (
 					subprocess.check_output(
@@ -514,10 +514,10 @@ def install_resolved_deps(
 		app.install_resolved_apps(skip_assets=skip_assets, verbose=verbose)
 
 
-def new_app(app, no_git=None, bench_path="."):
-	if bench.FRAPPE_VERSION in (0, None):
-		raise NotInBenchDirectoryError(
-			f"{os.path.realpath(bench_path)} is not a valid bench directory."
+def new_app(app, no_git=None, ocean_path="."):
+	if ocean.FRAPPE_VERSION in (0, None):
+		raise NotInoceanDirectoryError(
+			f"{os.path.realpath(ocean_path)} is not a valid ocean directory."
 		)
 
 	# For backwards compatibility
@@ -528,31 +528,31 @@ def new_app(app, no_git=None, bench_path="."):
 		)
 		return
 
-	apps = os.path.abspath(os.path.join(bench_path, "apps"))
+	apps = os.path.abspath(os.path.join(ocean_path, "apps"))
 	args = ["make-app", apps, app]
 	if no_git:
-		if bench.FRAPPE_VERSION < 14:
+		if ocean.FRAPPE_VERSION < 14:
 			click.secho("Frappe v14 or greater is needed for '--no-git' flag", fg="red")
 			return
 		args.append(no_git)
 
 	logger.log(f"creating new app {app}")
-	run_frappe_cmd(*args, bench_path=bench_path)
-	install_app(app, bench_path=bench_path)
+	run_frappe_cmd(*args, ocean_path=ocean_path)
+	install_app(app, ocean_path=ocean_path)
 
 
 def install_app(
 	app,
 	tag=None,
-	bench_path=".",
+	ocean_path=".",
 	verbose=False,
 	no_cache=False,
-	restart_bench=True,
+	restart_ocean=True,
 	skip_assets=False,
 	resolution=UNSET_ARG,
 ):
-	import bench.cli as bench_cli
-	from bench.bench import Bench
+	import ocean.cli as ocean_cli
+	from ocean.ocean import ocean
 
 	install_text = f"Installing {app}"
 	click.secho(install_text, fg="yellow")
@@ -561,46 +561,46 @@ def install_app(
 	if resolution == UNSET_ARG:
 		resolution = []
 
-	bench = Bench(bench_path)
-	conf = bench.conf
+	ocean = ocean(ocean_path)
+	conf = ocean.conf
 
-	verbose = bench_cli.verbose or verbose
+	verbose = ocean_cli.verbose or verbose
 	quiet_flag = "" if verbose else "--quiet"
 	cache_flag = "--no-cache-dir" if no_cache else ""
 
-	app_path = os.path.realpath(os.path.join(bench_path, "apps", app))
+	app_path = os.path.realpath(os.path.join(ocean_path, "apps", app))
 
-	bench.run(
-		f"{bench.python} -m pip install {quiet_flag} --upgrade -e {app_path} {cache_flag}"
+	ocean.run(
+		f"{ocean.python} -m pip install {quiet_flag} --upgrade -e {app_path} {cache_flag}"
 	)
 
 	if conf.get("developer_mode"):
-		install_python_dev_dependencies(apps=app, bench_path=bench_path, verbose=verbose)
+		install_python_dev_dependencies(apps=app, ocean_path=ocean_path, verbose=verbose)
 
 	if os.path.exists(os.path.join(app_path, "package.json")):
 		yarn_install = "yarn install --verbose" if verbose else "yarn install"
-		bench.run(yarn_install, cwd=app_path)
+		ocean.run(yarn_install, cwd=app_path)
 
-	bench.apps.sync(app_name=app, required=resolution, branch=tag, app_dir=app_path)
+	ocean.apps.sync(app_name=app, required=resolution, branch=tag, app_dir=app_path)
 
 	if not skip_assets:
-		build_assets(bench_path=bench_path, app=app)
+		build_assets(ocean_path=ocean_path, app=app)
 
-	if restart_bench:
+	if restart_ocean:
 		# Avoiding exceptions here as production might not be set-up
 		# OR we might just be generating docker images.
-		bench.reload(_raise=False)
+		ocean.reload(_raise=False)
 
 
-def pull_apps(apps=None, bench_path=".", reset=False):
+def pull_apps(apps=None, ocean_path=".", reset=False):
 	"""Check all apps if there no local changes, pull"""
-	from bench.bench import Bench
-	from bench.utils.app import get_current_branch, get_remote
+	from ocean.ocean import ocean
+	from ocean.utils.app import get_current_branch, get_remote
 
-	bench = Bench(bench_path)
-	rebase = "--rebase" if bench.conf.get("rebase_on_pull") else ""
-	apps = apps or bench.apps
-	excluded_apps = bench.excluded_apps
+	ocean = ocean(ocean_path)
+	rebase = "--rebase" if ocean.conf.get("rebase_on_pull") else ""
+	apps = apps or ocean.apps
+	excluded_apps = ocean.excluded_apps
 
 	# check for local changes
 	if not reset:
@@ -608,7 +608,7 @@ def pull_apps(apps=None, bench_path=".", reset=False):
 			if app in excluded_apps:
 				print(f"Skipping reset for app {app}")
 				continue
-			app_dir = get_repo_dir(app, bench_path=bench_path)
+			app_dir = get_repo_dir(app, ocean_path=ocean_path)
 			if os.path.exists(os.path.join(app_dir, ".git")):
 				out = subprocess.check_output("git status", shell=True, cwd=app_dir)
 				out = out.decode("utf-8")
@@ -622,7 +622,7 @@ Here are your choices:
 
 1. Merge the {app} app manually with "git pull" / "git pull --rebase" and fix conflicts.
 1. Temporarily remove your changes with "git stash" or discard them completely
-	with "bench update --reset" or for individual repositries "git reset --hard"
+	with "ocean update --reset" or for individual repositries "git reset --hard"
 2. If your changes are helpful for others, send in a pull request via GitHub and
 	wait for them to be merged in the core."""
 					)
@@ -632,50 +632,50 @@ Here are your choices:
 		if app in excluded_apps:
 			print(f"Skipping pull for app {app}")
 			continue
-		app_dir = get_repo_dir(app, bench_path=bench_path)
+		app_dir = get_repo_dir(app, ocean_path=ocean_path)
 		if os.path.exists(os.path.join(app_dir, ".git")):
 			remote = get_remote(app)
 			if not remote:
 				# remote is False, i.e. remote doesn't exist, add the app to excluded_apps.txt
-				add_to_excluded_apps_txt(app, bench_path=bench_path)
+				add_to_excluded_apps_txt(app, ocean_path=ocean_path)
 				print(
 					f"Skipping pull for app {app}, since remote doesn't exist, and"
 					" adding it to excluded apps"
 				)
 				continue
 
-			if not bench.conf.get("shallow_clone") or not reset:
+			if not ocean.conf.get("shallow_clone") or not reset:
 				is_shallow = os.path.exists(os.path.join(app_dir, ".git", "shallow"))
 				if is_shallow:
 					s = " to safely pull remote changes." if not reset else ""
 					print(f"Unshallowing {app}{s}")
-					bench.run(f"git fetch {remote} --unshallow", cwd=app_dir)
+					ocean.run(f"git fetch {remote} --unshallow", cwd=app_dir)
 
-			branch = get_current_branch(app, bench_path=bench_path)
+			branch = get_current_branch(app, ocean_path=ocean_path)
 			logger.log(f"pulling {app}")
 			if reset:
 				reset_cmd = f"git reset --hard {remote}/{branch}"
-				if bench.conf.get("shallow_clone"):
-					bench.run(f"git fetch --depth=1 --no-tags {remote} {branch}", cwd=app_dir)
-					bench.run(reset_cmd, cwd=app_dir)
-					bench.run("git reflog expire --all", cwd=app_dir)
-					bench.run("git gc --prune=all", cwd=app_dir)
+				if ocean.conf.get("shallow_clone"):
+					ocean.run(f"git fetch --depth=1 --no-tags {remote} {branch}", cwd=app_dir)
+					ocean.run(reset_cmd, cwd=app_dir)
+					ocean.run("git reflog expire --all", cwd=app_dir)
+					ocean.run("git gc --prune=all", cwd=app_dir)
 				else:
-					bench.run("git fetch --all", cwd=app_dir)
-					bench.run(reset_cmd, cwd=app_dir)
+					ocean.run("git fetch --all", cwd=app_dir)
+					ocean.run(reset_cmd, cwd=app_dir)
 			else:
-				bench.run(f"git pull {rebase} {remote} {branch}", cwd=app_dir)
-			bench.run('find . -name "*.pyc" -delete', cwd=app_dir)
+				ocean.run(f"git pull {rebase} {remote} {branch}", cwd=app_dir)
+			ocean.run('find . -name "*.pyc" -delete', cwd=app_dir)
 
 
-def use_rq(bench_path):
-	bench_path = os.path.abspath(bench_path)
-	celery_app = os.path.join(bench_path, "apps", "frappe", "frappe", "celery_app.py")
+def use_rq(ocean_path):
+	ocean_path = os.path.abspath(ocean_path)
+	celery_app = os.path.join(ocean_path, "apps", "frappe", "frappe", "celery_app.py")
 	return not os.path.exists(celery_app)
 
 
-def get_repo_dir(app, bench_path="."):
-	return os.path.join(bench_path, "apps", app)
+def get_repo_dir(app, ocean_path="."):
+	return os.path.join(ocean_path, "apps", app)
 
 
 def is_git_repo(app_path):
@@ -686,13 +686,13 @@ def is_git_repo(app_path):
 		return False
 
 
-def install_apps_from_path(path, bench_path="."):
+def install_apps_from_path(path, ocean_path="."):
 	apps = get_apps_json(path)
 	for app in apps:
 		get_app(
 			app["url"],
 			branch=app.get("branch"),
-			bench_path=bench_path,
+			ocean_path=ocean_path,
 			skip_assets=True,
 		)
 

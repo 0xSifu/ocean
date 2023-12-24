@@ -3,10 +3,10 @@ import os
 import subprocess
 
 # imports - module imports
-from bench.bench import Bench
-from bench.app import get_repo_dir
-from bench.utils import set_git_remote_url
-from bench.utils.app import get_remote
+from ocean.ocean import ocean
+from ocean.app import get_repo_dir
+from ocean.utils import set_git_remote_url
+from ocean.utils.app import get_remote
 
 # imports - third party imports
 import click
@@ -27,7 +27,7 @@ def remote_reset_url(app):
 
 @click.command('remote-urls', help="Show apps remote url")
 def remote_urls():
-	for app in Bench(".").apps:
+	for app in ocean(".").apps:
 		repo_dir = get_repo_dir(app)
 
 		if os.path.exists(os.path.join(repo_dir, '.git')):

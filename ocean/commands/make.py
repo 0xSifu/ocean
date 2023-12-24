@@ -2,7 +2,7 @@
 import click
 
 
-@click.command("init", help="Initialize a new bench instance in the specified path")
+@click.command("init", help="Initialize a new ocean instance in the specified path")
 @click.argument("path")
 @click.option(
 	"--version",
@@ -12,7 +12,7 @@ import click
 	help="Clone a particular branch of frappe",
 )
 @click.option(
-	"--ignore-exist", is_flag=True, default=False, help="Ignore if Bench instance exists."
+	"--ignore-exist", is_flag=True, default=False, help="Ignore if ocean instance exists."
 )
 @click.option(
 	"--python", type=str, default="python3", help="Path to Python Executable."
@@ -29,7 +29,7 @@ import click
 @click.option(
 	"--no-backups",
 	is_flag=True,
-	help="Do not set up automatic periodic backups for all sites on this bench",
+	help="Do not set up automatic periodic backups for all sites on this ocean",
 )
 @click.option(
 	"--skip-redis-config-generation",
@@ -64,11 +64,11 @@ def init(
 ):
 	import os
 
-	from bench.utils import log
-	from bench.utils.system import init
+	from ocean.utils import log
+	from ocean.utils.system import init
 
 	if not ignore_exist and os.path.exists(path):
-		log(f"Bench instance already exists at {path}", level=2)
+		log(f"ocean instance already exists at {path}", level=2)
 		return
 
 	try:
@@ -88,14 +88,14 @@ def init(
 			verbose=verbose,
 			dev=dev,
 		)
-		log(f"Bench {path} initialized", level=1)
+		log(f"ocean {path} initialized", level=1)
 	except SystemExit:
 		raise
 	except Exception:
 		import shutil
 		import time
 
-		from bench.utils import get_traceback
+		from ocean.utils import get_traceback
 
 		# add a sleep here so that the traceback of other processes doesnt overlap with the prompts
 		time.sleep(1)
@@ -103,7 +103,7 @@ def init(
 
 		log(f"There was a problem while creating {path}", level=2)
 		if click.confirm("Do you want to rollback these changes?", abort=True):
-			log(f'Rolling back Bench "{path}"')
+			log(f'Rolling back ocean "{path}"')
 			if os.path.exists(path):
 				shutil.rmtree(path)
 
@@ -111,25 +111,25 @@ def init(
 @click.command("drop")
 @click.argument("path")
 def drop(path):
-	from bench.bench import Bench
-	from bench.exceptions import BenchNotFoundError, ValidationError
+	from ocean.ocean import ocean
+	from ocean.exceptions import oceanNotFoundError, ValidationError
 
-	bench = Bench(path)
+	ocean = ocean(path)
 
-	if not bench.exists:
-		raise BenchNotFoundError(f"Bench {bench.name} does not exist")
+	if not ocean.exists:
+		raise oceanNotFoundError(f"ocean {ocean.name} does not exist")
 
-	if bench.sites:
-		raise ValidationError("Cannot remove non-empty bench directory")
+	if ocean.sites:
+		raise ValidationError("Cannot remove non-empty ocean directory")
 
-	bench.drop()
+	ocean.drop()
 
-	print("Bench dropped")
+	print("ocean dropped")
 
 
 @click.command(
 	["get", "get-app"],
-	help="Clone an app from the internet or filesystem and set it up in your bench",
+	help="Clone an app from the internet or filesystem and set it up in your ocean",
 )
 @click.argument("name", nargs=-1)  # Dummy argument for backward compatibility
 @click.argument("git-url")
@@ -143,7 +143,7 @@ def drop(path):
 	help="Create a soft link to git repo instead of clone.",
 )
 @click.option(
-	"--init-bench", is_flag=True, default=False, help="Initialize Bench if not in one"
+	"--init-ocean", is_flag=True, default=False, help="Initialize ocean if not in one"
 )
 @click.option(
 	"--resolve-deps",
@@ -158,11 +158,11 @@ def get_app(
 	overwrite=False,
 	skip_assets=False,
 	soft_link=False,
-	init_bench=False,
+	init_ocean=False,
 	resolve_deps=False,
 ):
-	"clone an app from the internet and set it up in your bench"
-	from bench.app import get_app
+	"clone an app from the internet and set it up in your ocean"
+	from ocean.app import get_app
 
 	get_app(
 		git_url,
@@ -170,7 +170,7 @@ def get_app(
 		skip_assets=skip_assets,
 		overwrite=overwrite,
 		soft_link=soft_link,
-		init_bench=init_bench,
+		init_ocean=init_ocean,
 		resolve_deps=resolve_deps,
 	)
 
@@ -184,7 +184,7 @@ def get_app(
 )
 @click.argument("app-name")
 def new_app(app_name, no_git=None):
-	from bench.app import new_app
+	from ocean.app import new_app
 
 	new_app(app_name, no_git)
 
@@ -192,23 +192,23 @@ def new_app(app_name, no_git=None):
 @click.command(
 	["remove", "rm", "remove-app"],
 	help=(
-		"Completely remove app from bench and re-build assets if not installed on any site"
+		"Completely remove app from ocean and re-build assets if not installed on any site"
 	),
 )
 @click.option("--no-backup", is_flag=True, help="Do not backup app before removing")
 @click.option("--force", is_flag=True, help="Force remove app")
 @click.argument("app-name")
 def remove_app(app_name, no_backup=False, force=False):
-	from bench.bench import Bench
+	from ocean.ocean import ocean
 
-	bench = Bench(".")
-	bench.uninstall(app_name, no_backup=no_backup, force=force)
+	ocean = ocean(".")
+	ocean.uninstall(app_name, no_backup=no_backup, force=force)
 
 
 @click.command("exclude-app", help="Exclude app from updating")
 @click.argument("app_name")
 def exclude_app_for_update(app_name):
-	from bench.app import add_to_excluded_apps_txt
+	from ocean.app import add_to_excluded_apps_txt
 
 	add_to_excluded_apps_txt(app_name)
 
@@ -217,7 +217,7 @@ def exclude_app_for_update(app_name):
 @click.argument("app_name")
 def include_app_for_update(app_name):
 	"Include app from updating"
-	from bench.app import remove_from_excluded_apps_txt
+	from ocean.app import remove_from_excluded_apps_txt
 
 	remove_from_excluded_apps_txt(app_name)
 
@@ -225,15 +225,15 @@ def include_app_for_update(app_name):
 @click.command(
 	"pip",
 	context_settings={"ignore_unknown_options": True, "help_option_names": []},
-	help="For pip help use `bench pip help [COMMAND]` or `bench pip [COMMAND] -h`",
+	help="For pip help use `ocean pip help [COMMAND]` or `ocean pip [COMMAND] -h`",
 )
 @click.argument("args", nargs=-1)
 @click.pass_context
 def pip(ctx, args):
-	"Run pip commands in bench env"
+	"Run pip commands in ocean env"
 	import os
 
-	from bench.utils.bench import get_env_cmd
+	from ocean.utils.ocean import get_env_cmd
 
 	env_py = get_env_cmd("python")
 	os.execv(env_py, (env_py, "-m", "pip") + args)

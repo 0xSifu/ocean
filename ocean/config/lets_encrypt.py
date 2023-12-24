@@ -5,25 +5,25 @@ import os
 import click
 
 # imports - module imports
-import bench
-from bench.config.nginx import make_nginx_conf
-from bench.config.production_setup import service
-from bench.config.site_config import get_domains, remove_domain, update_site_config
-from bench.bench import Bench
-from bench.utils import exec_cmd, which
-from bench.utils.bench import update_common_site_config
-from bench.exceptions import CommandFailedError
+import ocean
+from ocean.config.nginx import make_nginx_conf
+from ocean.config.production_setup import service
+from ocean.config.site_config import get_domains, remove_domain, update_site_config
+from ocean.ocean import Ocean
+from ocean.utils import exec_cmd, which
+from ocean.utils.ocean import update_common_site_config
+from ocean.exceptions import CommandFailedError
 
 
-def setup_letsencrypt(site, custom_domain, bench_path, interactive):
+def setup_letsencrypt(site, custom_domain, ocean_path, interactive):
 
-	site_path = os.path.join(bench_path, "sites", site, "site_config.json")
+	site_path = os.path.join(ocean_path, "sites", site, "site_config.json")
 	if not os.path.exists(os.path.dirname(site_path)):
 		print("No site named " + site)
 		return
 
 	if custom_domain:
-		domains = get_domains(site, bench_path)
+		domains = get_domains(site, ocean_path)
 		for d in domains:
 			if isinstance(d, dict) and d["domain"] == custom_domain:
 				print(f"SSL for Domain {custom_domain} already exists")
@@ -40,18 +40,18 @@ def setup_letsencrypt(site, custom_domain, bench_path, interactive):
 			abort=True,
 		)
 
-	if not Bench(bench_path).conf.get("dns_multitenant"):
+	if not ocean(ocean_path).conf.get("dns_multitenant"):
 		print("You cannot setup SSL without DNS Multitenancy")
 		return
 
 	create_config(site, custom_domain)
-	run_certbot_and_setup_ssl(site, custom_domain, bench_path, interactive)
+	run_certbot_and_setup_ssl(site, custom_domain, ocean_path, interactive)
 	setup_crontab()
 
 
 def create_config(site, custom_domain):
 	config = (
-		bench.config.env()
+		ocean.config.env()
 		.get_template("letsencrypt.cfg")
 		.render(domain=custom_domain or site)
 	)
@@ -62,7 +62,7 @@ def create_config(site, custom_domain):
 		f.write(config)
 
 
-def run_certbot_and_setup_ssl(site, custom_domain, bench_path, interactive=True):
+def run_certbot_and_setup_ssl(site, custom_domain, ocean_path, interactive=True):
 	service("nginx", "stop")
 
 	try:
@@ -82,15 +82,15 @@ def run_certbot_and_setup_ssl(site, custom_domain, bench_path, interactive=True)
 	}
 
 	if custom_domain:
-		remove_domain(site, custom_domain, bench_path)
-		domains = get_domains(site, bench_path)
+		remove_domain(site, custom_domain, ocean_path)
+		domains = get_domains(site, ocean_path)
 		ssl_config["domain"] = custom_domain
 		domains.append(ssl_config)
-		update_site_config(site, {"domains": domains}, bench_path=bench_path)
+		update_site_config(site, {"domains": domains}, ocean_path=ocean_path)
 	else:
-		update_site_config(site, ssl_config, bench_path=bench_path)
+		update_site_config(site, ssl_config, ocean_path=ocean_path)
 
-	make_nginx_conf(bench_path)
+	make_nginx_conf(ocean_path)
 	service("nginx", "start")
 
 
@@ -142,7 +142,7 @@ def renew_certs():
 	service("nginx", "start")
 
 
-def setup_wildcard_ssl(domain, email, bench_path, exclude_base_domain):
+def setup_wildcard_ssl(domain, email, ocean_path, exclude_base_domain):
 	def _get_domains(domain):
 		domain_list = [domain]
 
@@ -158,7 +158,7 @@ def setup_wildcard_ssl(domain, email, bench_path, exclude_base_domain):
 
 		return domain_list
 
-	if not Bench(bench_path).conf.get("dns_multitenant"):
+	if not Ocean(ocean_path).conf.get("dns_multitenant"):
 		print("You cannot setup SSL without DNS Multitenancy")
 		return
 
@@ -191,6 +191,6 @@ def setup_wildcard_ssl(domain, email, bench_path, exclude_base_domain):
 	update_common_site_config(ssl_config)
 	setup_crontab()
 
-	make_nginx_conf(bench_path)
+	make_nginx_conf(ocean_path)
 	print("Restrting Nginx service")
 	service("nginx", "restart")

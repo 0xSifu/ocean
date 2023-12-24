@@ -5,19 +5,19 @@ import logging
 import sys
 
 # imports - module imports
-import bench
-from bench.config.nginx import make_nginx_conf
-from bench.config.supervisor import (
+import ocean
+from ocean.config.nginx import make_nginx_conf
+from ocean.config.supervisor import (
 	generate_supervisor_config,
 	check_supervisord_config,
 )
-from bench.config.systemd import generate_systemd_config
-from bench.bench import Bench
-from bench.utils import exec_cmd, which, get_bench_name, get_cmd_output, log
-from bench.utils.system import fix_prod_setup_perms
-from bench.exceptions import CommandFailedError
+from ocean.config.systemd import generate_systemd_config
+from ocean.ocean import Ocean
+from ocean.utils import exec_cmd, which, get_ocean_name, get_cmd_output, log
+from ocean.utils.system import fix_prod_setup_perms
+from ocean.exceptions import CommandFailedError
 
-logger = logging.getLogger(bench.PROJECT_NAME)
+logger = logging.getLogger(ocean.PROJECT_NAME)
 
 
 def setup_production_prerequisites():
@@ -25,18 +25,18 @@ def setup_production_prerequisites():
 	if not which("ansible"):
 		exec_cmd(f"sudo {sys.executable} -m pip install ansible")
 	if not which("fail2ban-client"):
-		exec_cmd("bench setup role fail2ban")
+		exec_cmd("ocean setup role fail2ban")
 	if not which("nginx"):
-		exec_cmd("bench setup role nginx")
+		exec_cmd("ocean setup role nginx")
 	if not which("supervisord"):
-		exec_cmd("bench setup role supervisor")
+		exec_cmd("ocean setup role supervisor")
 
 
-def setup_production(user, bench_path=".", yes=False):
+def setup_production(user, ocean_path=".", yes=False):
 	print("Setting Up prerequisites...")
 	setup_production_prerequisites()
 
-	conf = Bench(bench_path).conf
+	conf = Ocean(ocean_path).conf
 
 	if conf.get("restart_supervisor_on_update") and conf.get("restart_systemd_on_update"):
 		raise Exception(
@@ -45,37 +45,37 @@ def setup_production(user, bench_path=".", yes=False):
 
 	if conf.get("restart_systemd_on_update"):
 		print("Setting Up systemd...")
-		generate_systemd_config(bench_path=bench_path, user=user, yes=yes)
+		generate_systemd_config(ocean_path=ocean_path, user=user, yes=yes)
 	else:
 		print("Setting Up supervisor...")
 		check_supervisord_config(user=user)
-		generate_supervisor_config(bench_path=bench_path, user=user, yes=yes)
+		generate_supervisor_config(ocean_path=ocean_path, user=user, yes=yes)
 
 	print("Setting Up NGINX...")
-	make_nginx_conf(bench_path=bench_path, yes=yes)
-	fix_prod_setup_perms(bench_path, frappe_user=user)
+	make_nginx_conf(ocean_path=ocean_path, yes=yes)
+	fix_prod_setup_perms(ocean_path, frappe_user=user)
 	remove_default_nginx_configs()
 
-	bench_name = get_bench_name(bench_path)
-	nginx_conf = f"/etc/nginx/conf.d/{bench_name}.conf"
+	ocean_name = get_ocean_name(ocean_path)
+	nginx_conf = f"/etc/nginx/conf.d/{ocean_name}.conf"
 
 	print("Setting Up symlinks and reloading services...")
 	if conf.get("restart_supervisor_on_update"):
 		supervisor_conf_extn = "ini" if is_centos7() else "conf"
 		supervisor_conf = os.path.join(
-			get_supervisor_confdir(), f"{bench_name}.{supervisor_conf_extn}"
+			get_supervisor_confdir(), f"{ocean_name}.{supervisor_conf_extn}"
 		)
 
 		# Check if symlink exists, If not then create it.
 		if not os.path.islink(supervisor_conf):
 			os.symlink(
-				os.path.abspath(os.path.join(bench_path, "config", "supervisor.conf")),
+				os.path.abspath(os.path.join(ocean_path, "config", "supervisor.conf")),
 				supervisor_conf,
 			)
 
 	if not os.path.islink(nginx_conf):
 		os.symlink(
-			os.path.abspath(os.path.join(bench_path, "config", "nginx.conf")), nginx_conf
+			os.path.abspath(os.path.join(ocean_path, "config", "nginx.conf")), nginx_conf
 		)
 
 	if conf.get("restart_supervisor_on_update"):
@@ -87,14 +87,14 @@ def setup_production(user, bench_path=".", yes=False):
 	reload_nginx()
 
 
-def disable_production(bench_path="."):
-	bench_name = get_bench_name(bench_path)
-	conf = Bench(bench_path).conf
+def disable_production(ocean_path="."):
+	ocean_name = get_ocean_name(ocean_path)
+	conf = Ocean(ocean_path).conf
 
 	# supervisorctl
 	supervisor_conf_extn = "ini" if is_centos7() else "conf"
 	supervisor_conf = os.path.join(
-		get_supervisor_confdir(), f"{bench_name}.{supervisor_conf_extn}"
+		get_supervisor_confdir(), f"{ocean_name}.{supervisor_conf_extn}"
 	)
 
 	if os.path.islink(supervisor_conf):
@@ -104,7 +104,7 @@ def disable_production(bench_path="."):
 		reload_supervisor()
 
 	# nginx
-	nginx_conf = f"/etc/nginx/conf.d/{bench_name}.conf"
+	nginx_conf = f"/etc/nginx/conf.d/{ocean_name}.conf"
 
 	if os.path.islink(nginx_conf):
 		os.unlink(nginx_conf)

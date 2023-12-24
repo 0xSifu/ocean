@@ -3,17 +3,17 @@ import shutil
 import subprocess
 import unittest
 
-from bench.app import App
-from bench.bench import Bench
-from bench.exceptions import InvalidRemoteException
-from bench.utils import is_valid_frappe_branch
+from ocean.app import App
+from ocean.ocean import Ocean
+from ocean.exceptions import InvalidRemoteException
+from ocean.utils import is_valid_frappe_branch
 
 
 class TestUtils(unittest.TestCase):
 	def test_app_utils(self):
 		git_url = "https://github.com/frappe/frappe"
 		branch = "develop"
-		app = App(name=git_url, branch=branch, bench=Bench("."))
+		app = App(name=git_url, branch=branch, ocean=Ocean("."))
 		self.assertTrue(
 			all(
 				[
@@ -45,27 +45,27 @@ class TestUtils(unittest.TestCase):
 		)
 
 	def test_app_states(self):
-		bench_dir = "./sandbox"
-		sites_dir = os.path.join(bench_dir, "sites")
+		ocean_dir = "./sandbox"
+		sites_dir = os.path.join(ocean_dir, "sites")
 
 		if not os.path.exists(sites_dir):
 			os.makedirs(sites_dir)
 
-		fake_bench = Bench(bench_dir)
+		fake_ocean = Ocean(ocean_dir)
 
-		self.assertTrue(hasattr(fake_bench.apps, "states"))
+		self.assertTrue(hasattr(fake_ocean.apps, "states"))
 
-		fake_bench.apps.states = {
+		fake_ocean.apps.states = {
 			"frappe": {
 				"resolution": {"branch": "develop", "commit_hash": "234rwefd"},
 				"version": "14.0.0-dev",
 			}
 		}
-		fake_bench.apps.update_apps_states()
+		fake_ocean.apps.update_apps_states()
 
-		self.assertEqual(fake_bench.apps.states, {})
+		self.assertEqual(fake_ocean.apps.states, {})
 
-		frappe_path = os.path.join(bench_dir, "apps", "frappe")
+		frappe_path = os.path.join(ocean_dir, "apps", "frappe")
 
 		os.makedirs(os.path.join(frappe_path, "frappe"))
 
@@ -76,7 +76,7 @@ class TestUtils(unittest.TestCase):
 
 		subprocess.run(["git", "add", "."], cwd=frappe_path, capture_output=True, check=True)
 		subprocess.run(
-			["git", "config", "user.email", "bench-test_app_states@gha.com"],
+			["git", "config", "user.email", "ocean-test_app_states@gha.com"],
 			cwd=frappe_path,
 			capture_output=True,
 			check=True,
@@ -91,13 +91,13 @@ class TestUtils(unittest.TestCase):
 			["git", "commit", "-m", "temp"], cwd=frappe_path, capture_output=True, check=True
 		)
 
-		fake_bench.apps.update_apps_states(app_name="frappe")
+		fake_ocean.apps.update_apps_states(app_name="frappe")
 
-		self.assertIn("frappe", fake_bench.apps.states)
-		self.assertIn("version", fake_bench.apps.states["frappe"])
-		self.assertEqual("11.0", fake_bench.apps.states["frappe"]["version"])
+		self.assertIn("frappe", fake_ocean.apps.states)
+		self.assertIn("version", fake_ocean.apps.states["frappe"])
+		self.assertEqual("11.0", fake_ocean.apps.states["frappe"]["version"])
 
-		shutil.rmtree(bench_dir)
+		shutil.rmtree(ocean_dir)
 
 	def test_ssh_ports(self):
 		app = App("git@github.com:22:frappe/frappe")

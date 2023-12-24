@@ -1,6 +1,6 @@
 """
 Deprecate archived_sites folder for consistency. This change is
-only for Frappe v14 benches. If not a v14 bench yet, skip this
+only for Frappe v14 oceanes. If not a v14 ocean yet, skip this
 patch and try again later.
 
 1. Rename folder `./archived_sites` to `./archived/sites`
@@ -12,11 +12,11 @@ import os
 from pathlib import Path
 
 import click
-from bench.utils.app import get_current_version
+from ocean.utils.app import get_current_version
 from semantic_version import Version
 
 
-def execute(bench_path):
+def execute(ocean_path):
 	frappe_version = Version(get_current_version("frappe"))
 
 	if frappe_version.major < 14 or os.name != "posix":
@@ -24,8 +24,8 @@ def execute(bench_path):
 		return False
 
 	pre_patch_dir = os.getcwd()
-	old_directory = Path(bench_path, "archived_sites")
-	new_directory = Path(bench_path, "archived", "sites")
+	old_directory = Path(ocean_path, "archived_sites")
+	new_directory = Path(ocean_path, "archived", "sites")
 
 	if not old_directory.exists():
 		return False
@@ -33,7 +33,7 @@ def execute(bench_path):
 	if old_directory.is_symlink():
 		return True
 
-	os.chdir(bench_path)
+	os.chdir(ocean_path)
 
 	if not os.path.exists(new_directory):
 		os.makedirs(new_directory)

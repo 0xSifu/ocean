@@ -8,24 +8,24 @@ from typing import List
 from functools import lru_cache
 
 # imports - module imports
-from bench.exceptions import (
+from ocean.exceptions import (
 	InvalidRemoteException,
 	InvalidBranchException,
 	CommandFailedError,
 	VersionNotFound,
 )
-from bench.app import get_repo_dir
+from ocean.app import get_repo_dir
 
 
-def is_version_upgrade(app="frappe", bench_path=".", branch=None):
-	upstream_version = get_upstream_version(app=app, branch=branch, bench_path=bench_path)
+def is_version_upgrade(app="frappe", ocean_path=".", branch=None):
+	upstream_version = get_upstream_version(app=app, branch=branch, ocean_path=ocean_path)
 
 	if not upstream_version:
 		raise InvalidBranchException(
 			f"Specified branch of app {app} is not in upstream remote"
 		)
 
-	local_version = get_major_version(get_current_version(app, bench_path=bench_path))
+	local_version = get_major_version(get_current_version(app, ocean_path=ocean_path))
 	upstream_version = get_major_version(upstream_version)
 
 	if upstream_version > local_version:
@@ -34,18 +34,18 @@ def is_version_upgrade(app="frappe", bench_path=".", branch=None):
 	return (False, local_version, upstream_version)
 
 
-def switch_branch(branch, apps=None, bench_path=".", upgrade=False, check_upgrade=True):
+def switch_branch(branch, apps=None, ocean_path=".", upgrade=False, check_upgrade=True):
 	import git
-	from bench.bench import Bench
-	from bench.utils import log, exec_cmd
-	from bench.utils.bench import (
+	from ocean.ocean import Ocean
+	from ocean.utils import log, exec_cmd
+	from ocean.utils.ocean import (
 		build_assets,
 		patch_sites,
 		post_upgrade,
 	)
-	from bench.utils.system import backup_all_sites
+	from ocean.utils.system import backup_all_sites
 
-	apps_dir = os.path.join(bench_path, "apps")
+	apps_dir = os.path.join(ocean_path, "apps")
 	version_upgrade = (False,)
 	switched_apps = []
 
@@ -71,7 +71,7 @@ def switch_branch(branch, apps=None, bench_path=".", upgrade=False, check_upgrad
 		)
 
 		if check_upgrade:
-			version_upgrade = is_version_upgrade(app=app, bench_path=bench_path, branch=branch)
+			version_upgrade = is_version_upgrade(app=app, ocean_path=ocean_path, branch=branch)
 			if version_upgrade[0] and not upgrade:
 				log(
 					f"Switching to {branch} will cause upgrade from"
@@ -92,24 +92,24 @@ def switch_branch(branch, apps=None, bench_path=".", upgrade=False, check_upgrad
 	if switched_apps:
 		log(f"Successfully switched branches for: {', '.join(switched_apps)}", level=1)
 		print(
-			"Please run `bench update --patch` to be safe from any differences in"
+			"Please run `ocean update --patch` to be safe from any differences in"
 			" database schema"
 		)
 
 	if version_upgrade[0] and upgrade:
-		Bench(bench_path).setup.requirements()
+		Ocean(ocean_path).setup.requirements()
 		backup_all_sites()
 		patch_sites()
 		build_assets()
 		post_upgrade(version_upgrade[1], version_upgrade[2])
 
 
-def switch_to_branch(branch=None, apps=None, bench_path=".", upgrade=False):
-	switch_branch(branch, apps=apps, bench_path=bench_path, upgrade=upgrade)
+def switch_to_branch(branch=None, apps=None, ocean_path=".", upgrade=False):
+	switch_branch(branch, apps=apps, ocean_path=ocean_path, upgrade=upgrade)
 
 
-def switch_to_develop(apps=None, bench_path=".", upgrade=True):
-	switch_branch("develop", apps=apps, bench_path=bench_path, upgrade=upgrade)
+def switch_to_develop(apps=None, ocean_path=".", upgrade=True):
+	switch_branch("develop", apps=apps, ocean_path=ocean_path, upgrade=upgrade)
 
 
 def get_version_from_string(contents, field="__version__"):
@@ -127,16 +127,16 @@ def get_major_version(version):
 	return semantic_version.Version(version).major
 
 
-def get_develop_version(app, bench_path="."):
-	repo_dir = get_repo_dir(app, bench_path=bench_path)
+def get_develop_version(app, ocean_path="."):
+	repo_dir = get_repo_dir(app, ocean_path=ocean_path)
 	with open(os.path.join(repo_dir, os.path.basename(repo_dir), "hooks.py")) as f:
 		return get_version_from_string(f.read(), field="develop_version")
 
 
-def get_upstream_version(app, branch=None, bench_path="."):
-	repo_dir = get_repo_dir(app, bench_path=bench_path)
+def get_upstream_version(app, branch=None, ocean_path="."):
+	repo_dir = get_repo_dir(app, ocean_path=ocean_path)
 	if not branch:
-		branch = get_current_branch(app, bench_path=bench_path)
+		branch = get_current_branch(app, ocean_path=ocean_path)
 
 	try:
 		subprocess.call(
@@ -161,17 +161,17 @@ def get_upstream_version(app, branch=None, bench_path="."):
 	return get_version_from_string(contents)
 
 
-def get_current_frappe_version(bench_path="."):
+def get_current_frappe_version(ocean_path="."):
 	try:
-		return get_major_version(get_current_version("frappe", bench_path=bench_path))
+		return get_major_version(get_current_version("frappe", ocean_path=ocean_path))
 	except OSError:
 		return 0
 
 
-def get_current_branch(app, bench_path="."):
-	from bench.utils import get_cmd_output
+def get_current_branch(app, ocean_path="."):
+	from ocean.utils import get_cmd_output
 
-	repo_dir = get_repo_dir(app, bench_path=bench_path)
+	repo_dir = get_repo_dir(app, ocean_path=ocean_path)
 	return get_cmd_output("basename $(git symbolic-ref -q HEAD)", cwd=repo_dir)
 
 
@@ -206,8 +206,8 @@ def required_apps_from_hooks(required_deps: str, local: bool = False) -> List:
 	return ast.literal_eval(req_apps_tag)
 
 
-def get_remote(app, bench_path="."):
-	repo_dir = get_repo_dir(app, bench_path=bench_path)
+def get_remote(app, ocean_path="."):
+	repo_dir = get_repo_dir(app, ocean_path=ocean_path)
 	contents = subprocess.check_output(
 		["git", "remote", "-v"], cwd=repo_dir, stderr=subprocess.STDOUT
 	)
@@ -222,13 +222,13 @@ def get_remote(app, bench_path="."):
 		return contents.splitlines()[0].split()[0]
 
 
-def get_app_name(bench_path: str, folder_name: str) -> str:
+def get_app_name(ocean_path: str, folder_name: str) -> str:
 	"""Retrieves `name` attribute of app - equivalent to distribution name
 	of python package. Fetches from pyproject.toml, setup.cfg or setup.py
 	whichever defines it in that order.
 	"""
 	app_name = None
-	apps_path = os.path.join(os.path.abspath(bench_path), "apps")
+	apps_path = os.path.join(os.path.abspath(ocean_path), "apps")
 
 	pyproject_path = os.path.join(apps_path, folder_name, "pyproject.toml")
 	config_py_path = os.path.join(apps_path, folder_name, "setup.cfg")
@@ -261,15 +261,15 @@ def get_app_name(bench_path: str, folder_name: str) -> str:
 	return folder_name
 
 
-def check_existing_dir(bench_path, repo_name):
-	cloned_path = os.path.join(bench_path, "apps", repo_name)
+def check_existing_dir(ocean_path, repo_name):
+	cloned_path = os.path.join(ocean_path, "apps", repo_name)
 	dir_already_exists = os.path.isdir(cloned_path)
 	return dir_already_exists, cloned_path
 
 
-def get_current_version(app, bench_path="."):
+def get_current_version(app, ocean_path="."):
 	current_version = None
-	repo_dir = get_repo_dir(app, bench_path=bench_path)
+	repo_dir = get_repo_dir(app, ocean_path=ocean_path)
 	config_path = os.path.join(repo_dir, "setup.cfg")
 	init_path = os.path.join(repo_dir, os.path.basename(repo_dir), "__init__.py")
 	setup_path = os.path.join(repo_dir, "setup.py")

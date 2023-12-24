@@ -6,8 +6,8 @@ import sys
 import click
 
 # imports - module imports
-from bench.utils import exec_cmd, run_playbook, which
-from bench.utils.cli import SugaredOption
+from ocean.utils import exec_cmd, run_playbook, which
+from ocean.utils.cli import SugaredOption
 
 
 @click.group(help="Setup command group for enabling setting up a Frappe environment")
@@ -20,7 +20,7 @@ def setup():
 )
 @click.argument("user")
 def setup_sudoers(user):
-	from bench.utils.system import setup_sudoers
+	from ocean.utils.system import setup_sudoers
 
 	setup_sudoers(user)
 
@@ -67,7 +67,7 @@ def reload_nginx():
 	default=False,
 )
 def setup_supervisor(user=None, yes=False, skip_redis=False, skip_supervisord=False):
-	from bench.utils import get_cmd_output
+	from ocean.utils import get_cmd_output
 	from bench.config.supervisor import (
 		check_supervisord_config,
 		generate_supervisor_config,
@@ -92,7 +92,7 @@ def setup_redis():
 
 @click.command("fonts", help="Add Frappe fonts to system")
 def setup_fonts():
-	from bench.utils.system import setup_fonts
+	from ocean.utils.system import setup_fonts
 
 	setup_fonts()
 
@@ -234,7 +234,7 @@ def setup_requirements(node=False, python=False, dev=False, apps=None):
 		bench.setup.node(apps=apps)
 
 	else:
-		from bench.utils.bench import install_python_dev_dependencies
+		from ocean.utils.bench import install_python_dev_dependencies
 
 		install_python_dev_dependencies(apps=apps)
 

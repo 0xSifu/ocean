@@ -10,24 +10,24 @@ import sys
 import click
 
 # imports - module imports
-import bench
-from bench.bench import Bench
-from bench.commands import bench_command
-from bench.config.common_site_config import get_config
-from bench.utils import (
+import ocean
+from ocean.ocean import ocean
+from ocean.commands import ocean_command
+from ocean.config.common_site_config import get_config
+from ocean.utils import (
 	check_latest_version,
 	drop_privileges,
-	find_parent_bench,
+	find_parent_ocean,
 	get_env_frappe_commands,
 	get_cmd_output,
-	is_bench_directory,
+	is_ocean_directory,
 	is_dist_editable,
 	is_root,
 	log,
 	setup_logging,
 	get_cmd_from_sysargv,
 )
-from bench.utils.bench import get_env_cmd
+from ocean.utils.ocean import get_env_cmd
 from importlib.util import find_spec
 
 
@@ -36,7 +36,7 @@ dynamic_feed = False
 verbose = False
 is_envvar_warn_set = None
 from_command_line = False  # set when commands are executed via the CLI
-bench.LOG_BUFFER = []
+ocean.LOG_BUFFER = []
 
 change_uid_msg = "You should not run this command as root"
 src = os.path.dirname(__file__)
@@ -64,12 +64,12 @@ def execute_cmd(check_for_update=True, command: str = None, logger: Logger = Non
 
 def cli():
 	setup_clear_cache()
-	global from_command_line, bench_config, is_envvar_warn_set, verbose
+	global from_command_line, ocean_config, is_envvar_warn_set, verbose
 
 	from_command_line = True
 	command = " ".join(sys.argv)
 	argv = set(sys.argv)
-	is_envvar_warn_set = not (os.environ.get("BENCH_DEVELOPER") or os.environ.get("CI"))
+	is_envvar_warn_set = not (os.environ.get("ocean_DEVELOPER") or os.environ.get("CI"))
 	is_cli_command = len(sys.argv) > 1 and not argv.intersection({"src", "--version"})
 	cmd_from_sys = get_cmd_from_sysargv()
 
@@ -80,7 +80,7 @@ def cli():
 	logger = setup_logging()
 	logger.info(command)
 
-	bench_config = get_config(".")
+	ocean_config = get_config(".")
 
 	if is_cli_command:
 		check_uid()
@@ -90,54 +90,54 @@ def cli():
 	if (
 		is_envvar_warn_set
 		and is_cli_command
-		and not bench_config.get("developer_mode")
-		and is_dist_editable(bench.PROJECT_NAME)
+		and not ocean_config.get("developer_mode")
+		and is_dist_editable(ocean.PROJECT_NAME)
 	):
 		log(
-			"bench is installed in editable mode!\n\nThis is not the recommended mode"
+			"ocean is installed in editable mode!\n\nThis is not the recommended mode"
 			" of installation for production. Instead, install the package from PyPI"
-			" with: `pip install frappe-bench`\n",
+			" with: `pip install frappe-ocean`\n",
 			level=3,
 		)
 
-	in_bench = is_bench_directory()
+	in_ocean = is_ocean_directory()
 
 	if (
-		not in_bench
+		not in_ocean
 		and len(sys.argv) > 1
 		and not argv.intersection(
 			{"init", "find", "src", "drop", "get", "get-app", "--version"}
 		)
 		and not cmd_requires_root()
 	):
-		log("Command not being executed in bench directory", level=3)
+		log("Command not being executed in ocean directory", level=3)
 
 	if len(sys.argv) == 1 or sys.argv[1] == "--help":
-		print(click.Context(bench_command).get_help())
-		if in_bench:
+		print(click.Context(ocean_command).get_help())
+		if in_ocean:
 			print(get_frappe_help())
 		return
 
-	_opts = [x.opts + x.secondary_opts for x in bench_command.params]
+	_opts = [x.opts + x.secondary_opts for x in ocean_command.params]
 	opts = {item for sublist in _opts for item in sublist}
 
 	setup_exception_handler()
 
 	# handle usages like `--use-feature='feat-x'` and `--use-feature 'feat-x'`
 	if cmd_from_sys and cmd_from_sys.split("=", 1)[0].strip() in opts:
-		bench_command()
+		ocean_command()
 
-	if cmd_from_sys in bench_command.commands:
+	if cmd_from_sys in ocean_command.commands:
 		with execute_cmd(check_for_update=is_cli_command, command=command, logger=logger):
-			bench_command()
+			ocean_command()
 
-	if in_bench:
+	if in_ocean:
 		if cmd_from_sys in get_frappe_commands():
 			frappe_cmd()
 		else:
 			app_cmd()
 
-	bench_command()
+	ocean_command()
 
 
 def check_uid():
@@ -173,7 +173,7 @@ def cmd_requires_root():
 def change_dir():
 	if os.path.exists("config.json") or "init" in sys.argv:
 		return
-	dir_path_file = "/etc/frappe_bench_dir"
+	dir_path_file = "/etc/frappe_ocean_dir"
 	if os.path.exists(dir_path_file):
 		with open(dir_path_file) as f:
 			dir_path = f.read().strip()
@@ -183,7 +183,7 @@ def change_dir():
 
 def change_uid():
 	if is_root() and not cmd_requires_root():
-		frappe_user = bench_config.get("frappe_user")
+		frappe_user = ocean_config.get("frappe_user")
 		if frappe_user:
 			drop_privileges(uid_name=frappe_user, gid_name=frappe_user)
 			os.environ["HOME"] = pwd.getpwnam(frappe_user).pw_dir
@@ -192,31 +192,31 @@ def change_uid():
 			sys.exit(1)
 
 
-def app_cmd(bench_path="."):
-	f = get_env_cmd("python", bench_path=bench_path)
-	os.chdir(os.path.join(bench_path, "sites"))
-	os.execv(f, [f] + ["-m", "frappe.utils.bench_helper"] + sys.argv[1:])
+def app_cmd(ocean_path="."):
+	f = get_env_cmd("python", ocean_path=ocean_path)
+	os.chdir(os.path.join(ocean_path, "sites"))
+	os.execv(f, [f] + ["-m", "frappe.utils.ocean_helper"] + sys.argv[1:])
 
 
-def frappe_cmd(bench_path="."):
-	f = get_env_cmd("python", bench_path=bench_path)
-	os.chdir(os.path.join(bench_path, "sites"))
-	os.execv(f, [f] + ["-m", "frappe.utils.bench_helper", "frappe"] + sys.argv[1:])
+def frappe_cmd(ocean_path="."):
+	f = get_env_cmd("python", ocean_path=ocean_path)
+	os.chdir(os.path.join(ocean_path, "sites"))
+	os.execv(f, [f] + ["-m", "frappe.utils.ocean_helper", "frappe"] + sys.argv[1:])
 
 
 def get_frappe_commands():
-	if not is_bench_directory():
+	if not is_ocean_directory():
 		return set()
 
 	return set(get_env_frappe_commands())
 
 
-def get_frappe_help(bench_path="."):
-	python = get_env_cmd("python", bench_path=bench_path)
-	sites_path = os.path.join(bench_path, "sites")
+def get_frappe_help(ocean_path="."):
+	python = get_env_cmd("python", ocean_path=ocean_path)
+	sites_path = os.path.join(ocean_path, "sites")
 	try:
 		out = get_cmd_output(
-			f"{python} -m frappe.utils.bench_helper get-frappe-help", cwd=sites_path
+			f"{python} -m frappe.utils.ocean_helper get-frappe-help", cwd=sites_path
 		)
 		return "\n\nFramework commands:\n" + out.split("Commands:")[1]
 	except Exception:
@@ -224,14 +224,14 @@ def get_frappe_help(bench_path="."):
 
 
 def change_working_directory():
-	"""Allows bench commands to be run from anywhere inside a bench directory"""
+	"""Allows ocean commands to be run from anywhere inside a ocean directory"""
 	cur_dir = os.path.abspath(".")
-	bench_path = find_parent_bench(cur_dir)
-	bench.current_path = os.getcwd()
-	bench.updated_path = bench_path
+	ocean_path = find_parent_ocean(cur_dir)
+	ocean.current_path = os.getcwd()
+	ocean.updated_path = ocean_path
 
-	if bench_path:
-		os.chdir(bench_path)
+	if ocean_path:
+		os.chdir(ocean_path)
 
 
 def setup_clear_cache():
@@ -240,7 +240,7 @@ def setup_clear_cache():
 	f = copy(os.chdir)
 
 	def _chdir(*args, **kwargs):
-		Bench.cache_clear()
+		ocean.cache_clear()
 		get_env_cmd.cache_clear()
 		return f(*args, **kwargs)
 
@@ -249,7 +249,7 @@ def setup_clear_cache():
 
 def setup_exception_handler():
 	from traceback import format_exception
-	from bench.exceptions import CommandFailedError
+	from ocean.exceptions import CommandFailedError
 
 	def handle_exception(exc_type, exc_info, tb):
 		if exc_type == CommandFailedError:

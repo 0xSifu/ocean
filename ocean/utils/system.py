@@ -6,8 +6,8 @@ import shutil
 import sys
 
 # imports - module imports
-import bench
-from bench.utils import (
+import ocean
+from ocean.utils import (
 	exec_cmd,
 	get_process_manager,
 	log,
@@ -16,11 +16,11 @@ from bench.utils import (
 	which,
 	is_valid_frappe_branch,
 )
-from bench.utils.bench import build_assets, clone_apps_from
-from bench.utils.render import job
+from ocean.utils.ocean import build_assets, clone_apps_from
+from ocean.utils.render import job
 
 
-@job(title="Initializing Bench {path}", success="Bench {path} initialized")
+@job(title="Initializing Ocean {path}", success="Ocean {path} initialized")
 def init(
 	path,
 	apps_path=None,
@@ -37,13 +37,13 @@ def init(
 	install_app=None,
 	dev=False,
 ):
-	"""Initialize a new bench directory
+	"""Initialize a new ocean directory
 
-	* create a bench directory in the given path
-	* setup logging for the bench
-	* setup env for the bench
-	* setup config (dir/pids/redis/procfile) for the bench
-	* setup patches.txt for bench
+	* create a ocean directory in the given path
+	* setup logging for the ocean
+	* setup env for the ocean
+	* setup config (dir/pids/redis/procfile) for the ocean
+	* setup patches.txt for ocean
 	* clone & install frappe
 	        * install python & node dependencies
 	        * build assets
@@ -53,31 +53,31 @@ def init(
 	# Use print("\033c", end="") to clear entire screen after each step and re-render each list
 	# another way => https://stackoverflow.com/a/44591228/10309266
 
-	import bench.cli
-	from bench.app import get_app, install_apps_from_path
-	from bench.bench import Bench
+	import ocean.cli
+	from ocean.app import get_app, install_apps_from_path
+	from ocean.ocean import Ocean
 
-	verbose = bench.cli.verbose or verbose
+	verbose = ocean.cli.verbose or verbose
 
-	bench = Bench(path)
+	ocean = Ocean(path)
 
-	bench.setup.dirs()
-	bench.setup.logging()
-	bench.setup.env(python=python)
+	ocean.setup.dirs()
+	ocean.setup.logging()
+	ocean.setup.env(python=python)
 	config = {}
 	if dev:
 		config["developer_mode"] = 1
-	bench.setup.config(
+	ocean.setup.config(
 		redis=not skip_redis_config_generation,
 		procfile=not no_procfile,
 		additional_config=config,
 	)
-	bench.setup.patches()
+	ocean.setup.patches()
 
 	# local apps
 	if clone_from:
 		clone_apps_from(
-			bench_path=path, clone_from=clone_from, update_app=not clone_without_update
+			ocean_path=path, clone_from=clone_from, update_app=not clone_without_update
 		)
 
 	# remote apps
@@ -87,7 +87,7 @@ def init(
 		get_app(
 			frappe_path,
 			branch=frappe_branch,
-			bench_path=path,
+			ocean_path=path,
 			skip_assets=True,
 			verbose=verbose,
 			resolve_deps=False,
@@ -95,28 +95,28 @@ def init(
 
 		# fetch remote apps using config file - deprecate this!
 		if apps_path:
-			install_apps_from_path(apps_path, bench_path=path)
+			install_apps_from_path(apps_path, ocean_path=path)
 
-	# getting app on bench init using --install-app
+	# getting app on ocean init using --install-app
 	if install_app:
 		get_app(
 			install_app,
 			branch=frappe_branch,
-			bench_path=path,
+			ocean_path=path,
 			skip_assets=True,
 			verbose=verbose,
 			resolve_deps=False,
 		)
 
 	if not skip_assets:
-		build_assets(bench_path=path)
+		build_assets(ocean_path=path)
 
 	if not no_backups:
-		bench.setup.backups()
+		ocean.setup.backups()
 
 
 def setup_sudoers(user):
-	from bench.config.lets_encrypt import get_certbot_path
+	from ocean.config.lets_encrypt import get_certbot_path
 
 	if not os.path.exists("/etc/sudoers.d"):
 		os.makedirs("/etc/sudoers.d")
@@ -128,7 +128,7 @@ def setup_sudoers(user):
 		if set_permissions:
 			os.chmod("/etc/sudoers", 0o440)
 
-	template = bench.config.env().get_template("frappe_sudoers")
+	template = ocean.config.env().get_template("frappe_sudoers")
 	frappe_sudoers = template.render(
 		**{
 			"user": user,
@@ -168,26 +168,26 @@ def start(no_dev=False, concurrency=None, procfile=None, no_prefix=False, procma
 	os.execv(program, command)
 
 
-def migrate_site(site, bench_path="."):
-	run_frappe_cmd("--site", site, "migrate", bench_path=bench_path)
+def migrate_site(site, ocean_path="."):
+	run_frappe_cmd("--site", site, "migrate", ocean_path=ocean_path)
 
 
-def backup_site(site, bench_path="."):
-	run_frappe_cmd("--site", site, "backup", bench_path=bench_path)
+def backup_site(site, ocean_path="."):
+	run_frappe_cmd("--site", site, "backup", ocean_path=ocean_path)
 
 
-def backup_all_sites(bench_path="."):
-	from bench.bench import Bench
+def backup_all_sites(ocean_path="."):
+	from ocean.ocean import Ocean
 
-	for site in Bench(bench_path).sites:
-		backup_site(site, bench_path=bench_path)
+	for site in Ocean(ocean_path).sites:
+		backup_site(site, ocean_path=ocean_path)
 
 
-def fix_prod_setup_perms(bench_path=".", frappe_user=None):
+def fix_prod_setup_perms(ocean_path=".", frappe_user=None):
 	from glob import glob
-	from bench.bench import Bench
+	from ocean.ocean import Ocean
 
-	frappe_user = frappe_user or Bench(bench_path).conf.get("frappe_user")
+	frappe_user = frappe_user or Ocean(ocean_path).conf.get("frappe_user")
 
 	if not frappe_user:
 		print("frappe user not set")

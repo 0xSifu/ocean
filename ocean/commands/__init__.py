@@ -2,7 +2,7 @@
 import click
 
 # imports - module imports
-from bench.utils.cli import (
+from ocean.utils.cli import (
 	MultiCommandGroup,
 	print_bench_version,
 	use_experimental_feature,

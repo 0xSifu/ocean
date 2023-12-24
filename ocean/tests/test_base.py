@@ -9,9 +9,9 @@ import traceback
 import unittest
 
 # imports - module imports
-from bench.utils import paths_in_bench, exec_cmd
-from bench.utils.system import init
-from bench.bench import Bench
+from ocean.utils import paths_in_ocean, exec_cmd
+from ocean.utils.system import init
+from ocean.ocean import Ocean
 
 PYTHON_VER = sys.version_info
 
@@ -21,26 +21,26 @@ if PYTHON_VER.major == 3:
 		FRAPPE_BRANCH = "develop"
 
 
-class TestBenchBase(unittest.TestCase):
+class TestOceanBase(unittest.TestCase):
 	def setUp(self):
-		self.benches_path = "."
-		self.benches = []
+		self.oceanes_path = "."
+		self.oceanes = []
 
 	def tearDown(self):
-		for bench_name in self.benches:
-			bench_path = os.path.join(self.benches_path, bench_name)
-			bench = Bench(bench_path)
+		for ocean_name in self.oceanes:
+			ocean_path = os.path.join(self.oceanes_path, ocean_name)
+			ocean = Ocean(ocean_path)
 			mariadb_password = (
 				"travis"
 				if os.environ.get("CI")
 				else getpass.getpass(prompt="Enter MariaDB root Password: ")
 			)
 
-			if bench.exists:
-				for site in bench.sites:
+			if ocean.exists:
+				for site in ocean.sites:
 					subprocess.call(
 						[
-							"bench",
+							"ocean",
 							"drop-site",
 							site,
 							"--force",
@@ -48,36 +48,36 @@ class TestBenchBase(unittest.TestCase):
 							"--root-password",
 							mariadb_password,
 						],
-						cwd=bench_path,
+						cwd=ocean_path,
 					)
-				shutil.rmtree(bench_path, ignore_errors=True)
+				shutil.rmtree(ocean_path, ignore_errors=True)
 
-	def assert_folders(self, bench_name):
-		for folder in paths_in_bench:
-			self.assert_exists(bench_name, folder)
-		self.assert_exists(bench_name, "apps", "frappe")
+	def assert_folders(self, ocean_name):
+		for folder in paths_in_ocean:
+			self.assert_exists(ocean_name, folder)
+		self.assert_exists(ocean_name, "apps", "frappe")
 
-	def assert_virtual_env(self, bench_name):
-		bench_path = os.path.abspath(bench_name)
-		python_path = os.path.abspath(os.path.join(bench_path, "env", "bin", "python"))
-		self.assertTrue(python_path.startswith(bench_path))
+	def assert_virtual_env(self, ocean_name):
+		ocean_path = os.path.abspath(ocean_name)
+		python_path = os.path.abspath(os.path.join(ocean_path, "env", "bin", "python"))
+		self.assertTrue(python_path.startswith(ocean_path))
 		for subdir in ("bin", "lib", "share"):
-			self.assert_exists(bench_name, "env", subdir)
+			self.assert_exists(ocean_name, "env", subdir)
 
-	def assert_config(self, bench_name):
+	def assert_config(self, ocean_name):
 		for config, search_key in (
 			("redis_queue.conf", "redis_queue.rdb"),
 			("redis_cache.conf", "redis_cache.rdb"),
 		):
 
-			self.assert_exists(bench_name, "config", config)
+			self.assert_exists(ocean_name, "config", config)
 
-			with open(os.path.join(bench_name, "config", config)) as f:
+			with open(os.path.join(ocean_name, "config", config)) as f:
 				self.assertTrue(search_key in f.read())
 
-	def assert_common_site_config(self, bench_name, expected_config):
+	def assert_common_site_config(self, ocean_name, expected_config):
 		common_site_config_path = os.path.join(
-			self.benches_path, bench_name, "sites", "common_site_config.json"
+			self.oceanes_path, ocean_name, "sites", "common_site_config.json"
 		)
 		self.assertTrue(os.path.exists(common_site_config_path))
 
@@ -90,16 +90,16 @@ class TestBenchBase(unittest.TestCase):
 	def assert_exists(self, *args):
 		self.assertTrue(os.path.exists(os.path.join(*args)))
 
-	def new_site(self, site_name, bench_name):
-		new_site_cmd = ["bench", "new-site", site_name, "--admin-password", "admin"]
+	def new_site(self, site_name, ocean_name):
+		new_site_cmd = ["ocean", "new-site", site_name, "--admin-password", "admin"]
 
 		if os.environ.get("CI"):
 			new_site_cmd.extend(["--mariadb-root-password", "travis"])
 
-		subprocess.call(new_site_cmd, cwd=os.path.join(self.benches_path, bench_name))
+		subprocess.call(new_site_cmd, cwd=os.path.join(self.oceanes_path, ocean_name))
 
-	def init_bench(self, bench_name, **kwargs):
-		self.benches.append(bench_name)
+	def init_ocean(self, ocean_name, **kwargs):
+		self.oceanes.append(ocean_name)
 		frappe_tmp_path = "/tmp/frappe"
 
 		if not os.path.exists(frappe_tmp_path):
@@ -116,11 +116,11 @@ class TestBenchBase(unittest.TestCase):
 			)
 		)
 
-		if not os.path.exists(os.path.join(self.benches_path, bench_name)):
-			init(bench_name, **kwargs)
+		if not os.path.exists(os.path.join(self.oceanes_path, ocean_name)):
+			init(ocean_name, **kwargs)
 			exec_cmd(
 				"git remote set-url upstream https://github.com/frappe/frappe",
-				cwd=os.path.join(self.benches_path, bench_name, "apps", "frappe"),
+				cwd=os.path.join(self.oceanes_path, ocean_name, "apps", "frappe"),
 			)
 
 	def file_exists(self, path):
