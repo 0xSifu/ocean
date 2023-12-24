@@ -9,21 +9,21 @@ import logging
 from typing import List, MutableSequence, TYPE_CHECKING, Union
 
 # imports - module imports
-import ocean
-from ocean.exceptions import AppNotInstalledError, InvalidRemoteException
-from ocean.config.common_site_config import setup_config
-from ocean.utils import (
+import bench
+from bench.exceptions import AppNotInstalledError, InvalidRemoteException
+from bench.config.common_site_config import setup_config
+from bench.utils import (
 	UNSET_ARG,
-	paths_in_ocean,
+	paths_in_bench,
 	exec_cmd,
-	is_ocean_directory,
+	is_bench_directory,
 	is_frappe_app,
 	get_cmd_output,
 	get_git_version,
 	log,
 	run_frappe_cmd,
 )
-from ocean.utils.ocean import (
+from bench.utils.bench import (
 	validate_app_installed_on_sites,
 	restart_supervisor_processes,
 	restart_systemd_processes,
@@ -32,15 +32,15 @@ from ocean.utils.ocean import (
 	get_venv_path,
 	get_env_cmd,
 )
-from ocean.utils.render import job, step
-from ocean.utils.app import get_current_version
-from ocean.app import is_git_repo
+from bench.utils.render import job, step
+from bench.utils.app import get_current_version
+from bench.app import is_git_repo
 
 
 if TYPE_CHECKING:
-	from ocean.app import App
+	from bench.app import App
 
-logger = logging.getLogger(ocean.PROJECT_NAME)
+logger = logging.getLogger(bench.PROJECT_NAME)
 
 
 class Base:
@@ -52,33 +52,33 @@ class Validator:
 	def validate_app_uninstall(self, app):
 		if app not in self.apps:
 			raise AppNotInstalledError(f"No app named {app}")
-		validate_app_installed_on_sites(app, ocean_path=self.name)
+		validate_app_installed_on_sites(app, bench_path=self.name)
 
 
 @lru_cache(maxsize=None)
-class ocean(Base, Validator):
+class Bench(Base, Validator):
 	def __init__(self, path):
 		self.name = path
 		self.cwd = os.path.abspath(path)
-		self.exists = is_ocean_directory(self.name)
+		self.exists = is_bench_directory(self.name)
 
-		self.setup = oceanSetup(self)
-		self.teardown = oceanTearDown(self)
-		self.apps = oceanApps(self)
+		self.setup = BenchSetup(self)
+		self.teardown = BenchTearDown(self)
+		self.apps = BenchApps(self)
 
 		self.apps_txt = os.path.join(self.name, "sites", "apps.txt")
 		self.excluded_apps_txt = os.path.join(self.name, "sites", "excluded_apps.txt")
 
 	@property
 	def python(self) -> str:
-		return get_env_cmd("python", ocean_path=self.name)
+		return get_env_cmd("python", bench_path=self.name)
 
 	@property
 	def shallow_clone(self) -> bool:
 		config = self.conf
 
 		if config:
-			if config.get("release_ocean") or not config.get("shallow_clone"):
+			if config.get("release_bench") or not config.get("shallow_clone"):
 				return False
 
 		return get_git_version() > 1.9
@@ -101,7 +101,7 @@ class ocean(Base, Validator):
 
 	@property
 	def conf(self):
-		from ocean.config.common_site_config import get_config
+		from bench.config.common_site_config import get_config
 
 		return get_config(self.name)
 
@@ -115,19 +115,19 @@ class ocean(Base, Validator):
 		self.teardown.dirs()
 
 	def install(self, app, branch=None):
-		from ocean.app import App
+		from bench.app import App
 
 		app = App(app, branch=branch)
 		self.apps.append(app)
 		self.apps.sync()
 
 	def uninstall(self, app, no_backup=False, force=False):
-		from ocean.app import App
+		from bench.app import App
 
 		if not force:
 			self.validate_app_uninstall(app)
 		try:
-			self.apps.remove(App(app, ocean=self, to_clone=False), no_backup=no_backup)
+			self.apps.remove(App(app, bench=self, to_clone=False), no_backup=no_backup)
 		except InvalidRemoteException:
 			if not force:
 				raise
@@ -136,25 +136,25 @@ class ocean(Base, Validator):
 		# self.build() - removed because it seems unnecessary
 		self.reload(_raise=False)
 
-	@step(title="Building ocean Assets", success="ocean Assets Built")
+	@step(title="Building Bench Assets", success="Bench Assets Built")
 	def build(self):
 		# build assets & stuff
-		run_frappe_cmd("build", ocean_path=self.name)
+		run_frappe_cmd("build", bench_path=self.name)
 
-	@step(title="Reloading ocean Processes", success="ocean Processes Reloaded")
+	@step(title="Reloading Bench Processes", success="Bench Processes Reloaded")
 	def reload(self, web=False, supervisor=True, systemd=True, _raise=True):
 		"""If web is True, only web workers are restarted"""
 		conf = self.conf
 
 		if conf.get("developer_mode"):
-			restart_process_manager(ocean_path=self.name, web_workers=web)
+			restart_process_manager(bench_path=self.name, web_workers=web)
 		if supervisor or conf.get("restart_supervisor_on_update"):
-			restart_supervisor_processes(ocean_path=self.name, web_workers=web, _raise=_raise)
+			restart_supervisor_processes(bench_path=self.name, web_workers=web, _raise=_raise)
 		if systemd and conf.get("restart_systemd_on_update"):
-			restart_systemd_processes(ocean_path=self.name, web_workers=web, _raise=_raise)
+			restart_systemd_processes(bench_path=self.name, web_workers=web, _raise=_raise)
 
 	def get_installed_apps(self) -> List:
-		"""Returns list of installed apps on ocean, not in excluded_apps.txt"""
+		"""Returns list of installed apps on bench, not in excluded_apps.txt"""
 		try:
 			installed_packages = get_cmd_output(f"{self.python} -m pip freeze", cwd=self.name)
 		except Exception:
@@ -167,11 +167,11 @@ class ocean(Base, Validator):
 		]
 
 
-class oceanApps(MutableSequence):
-	def __init__(self, ocean: ocean):
-		self.ocean = ocean
-		self.states_path = os.path.join(self.ocean.name, "sites", "apps.json")
-		self.apps_path = os.path.join(self.ocean.name, "apps")
+class BenchApps(MutableSequence):
+	def __init__(self, bench: Bench):
+		self.bench = bench
+		self.states_path = os.path.join(self.bench.name, "sites", "apps.json")
+		self.apps_path = os.path.join(self.bench.name, "apps")
 		self.initialize_apps()
 		self.set_states()
 
@@ -197,7 +197,7 @@ class oceanApps(MutableSequence):
 			if "frappe" in self.apps:
 				self.apps.remove("frappe")
 				self.apps.insert(0, "frappe")
-				with open(self.ocean.apps_txt, "w") as f:
+				with open(self.bench.apps_txt, "w") as f:
 					f.write("\n".join(self.apps))
 
 			print("Found existing apps updating states...")
@@ -206,7 +206,7 @@ class oceanApps(MutableSequence):
 					"resolution": {"commit_hash": None, "branch": None},
 					"required": required,
 					"idx": idx,
-					"version": get_current_version(app, self.ocean.name),
+					"version": get_current_version(app, self.bench.name),
 				}
 
 		apps_to_remove = []
@@ -221,7 +221,7 @@ class oceanApps(MutableSequence):
 			app_dir = app_name
 
 		if app_name and app_name not in self.states:
-			version = get_current_version(app_name, self.ocean.name)
+			version = get_current_version(app_name, self.bench.name)
 
 			app_dir = os.path.join(self.apps_path, app_dir)
 			is_repo = is_git_repo(app_dir)
@@ -265,7 +265,7 @@ class oceanApps(MutableSequence):
 			required = []
 		self.initialize_apps()
 
-		with open(self.ocean.apps_txt, "w") as f:
+		with open(self.bench.apps_txt, "w") as f:
 			f.write("\n".join(self.apps))
 
 		self.update_apps_states(
@@ -276,8 +276,8 @@ class oceanApps(MutableSequence):
 		try:
 			self.apps = [
 				x
-				for x in os.listdir(os.path.join(self.ocean.name, "apps"))
-				if is_frappe_app(os.path.join(self.ocean.name, "apps", x))
+				for x in os.listdir(os.path.join(self.bench.name, "apps"))
+				if is_frappe_app(os.path.join(self.bench.name, "apps", x))
 			]
 			self.apps.remove("frappe")
 			self.apps.insert(0, "frappe")
@@ -296,7 +296,7 @@ class oceanApps(MutableSequence):
 
 	def __delitem__(self, key):
 		"""removes the item at index, key"""
-		# TODO: uninstall and delete app from ocean
+		# TODO: uninstall and delete app from bench
 		del self.apps[key]
 
 	def __len__(self):
@@ -304,7 +304,7 @@ class oceanApps(MutableSequence):
 
 	def insert(self, key, value):
 		"""add an item, value, at index, key."""
-		# TODO: fetch and install app to ocean
+		# TODO: fetch and install app to bench
 		self.apps.insert(key, value)
 
 	def add(self, app: "App"):
@@ -328,17 +328,17 @@ class oceanApps(MutableSequence):
 		return str([x for x in self.apps])
 
 
-class oceanSetup(Base):
-	def __init__(self, ocean: ocean):
-		self.ocean = ocean
-		self.cwd = self.ocean.cwd
+class BenchSetup(Base):
+	def __init__(self, bench: Bench):
+		self.bench = bench
+		self.cwd = self.bench.cwd
 
 	@step(title="Setting Up Directories", success="Directories Set Up")
 	def dirs(self):
-		os.makedirs(self.ocean.name, exist_ok=True)
+		os.makedirs(self.bench.name, exist_ok=True)
 
-		for dirname in paths_in_ocean:
-			os.makedirs(os.path.join(self.ocean.name, dirname), exist_ok=True)
+		for dirname in paths_in_bench:
+			os.makedirs(os.path.join(self.bench.name, dirname), exist_ok=True)
 
 	@step(title="Setting Up Environment", success="Environment Set Up")
 	def env(self, python="python3"):
@@ -347,82 +347,82 @@ class oceanSetup(Base):
 		- upgrade env pip
 		- install frappe python dependencies
 		"""
-		import ocean.cli
+		import bench.cli
 		import click
 
-		verbose = ocean.cli.verbose
+		verbose = bench.cli.verbose
 
 		click.secho("Setting Up Environment", fg="yellow")
 
-		frappe = os.path.join(self.ocean.name, "apps", "frappe")
+		frappe = os.path.join(self.bench.name, "apps", "frappe")
 		quiet_flag = "" if verbose else "--quiet"
 
-		if not os.path.exists(self.ocean.python):
+		if not os.path.exists(self.bench.python):
 			venv = get_venv_path(verbose=verbose, python=python)
-			self.run(f"{venv} env", cwd=self.ocean.name)
+			self.run(f"{venv} env", cwd=self.bench.name)
 
 		self.pip()
 		self.wheel()
 
 		if os.path.exists(frappe):
 			self.run(
-				f"{self.ocean.python} -m pip install {quiet_flag} --upgrade -e {frappe}",
-				cwd=self.ocean.name,
+				f"{self.bench.python} -m pip install {quiet_flag} --upgrade -e {frappe}",
+				cwd=self.bench.name,
 			)
 
-	@step(title="Setting Up ocean Config", success="ocean Config Set Up")
+	@step(title="Setting Up Bench Config", success="Bench Config Set Up")
 	def config(self, redis=True, procfile=True, additional_config=None):
 		"""Setup config folder
 		- create pids folder
 		- generate sites/common_site_config.json
 		"""
-		setup_config(self.ocean.name, additional_config=additional_config)
+		setup_config(self.bench.name, additional_config=additional_config)
 
 		if redis:
-			from ocean.config.redis import generate_config
+			from bench.config.redis import generate_config
 
-			generate_config(self.ocean.name)
+			generate_config(self.bench.name)
 
 		if procfile:
-			from ocean.config.procfile import setup_procfile
+			from bench.config.procfile import setup_procfile
 
-			setup_procfile(self.ocean.name, skip_redis=not redis)
+			setup_procfile(self.bench.name, skip_redis=not redis)
 
 	@step(title="Updating pip", success="Updated pip")
 	def pip(self, verbose=False):
 		"""Updates env pip; assumes that env is setup"""
-		import ocean.cli
+		import bench.cli
 
-		verbose = ocean.cli.verbose or verbose
+		verbose = bench.cli.verbose or verbose
 		quiet_flag = "" if verbose else "--quiet"
 
 		return self.run(
-			f"{self.ocean.python} -m pip install {quiet_flag} --upgrade pip", cwd=self.ocean.name
+			f"{self.bench.python} -m pip install {quiet_flag} --upgrade pip", cwd=self.bench.name
 		)
 
 	@step(title="Installing wheel", success="Installed wheel")
 	def wheel(self, verbose=False):
 		"""Wheel is required for building old setup.py packages.
 		ref: https://github.com/pypa/pip/issues/8559"""
-		import ocean.cli
+		import bench.cli
 
-		verbose = ocean.cli.verbose or verbose
+		verbose = bench.cli.verbose or verbose
 		quiet_flag = "" if verbose else "--quiet"
 
 		return self.run(
-			f"{self.ocean.python} -m pip install {quiet_flag} wheel", cwd=self.ocean.name
+			f"{self.bench.python} -m pip install {quiet_flag} wheel", cwd=self.bench.name
 		)
 
 	def logging(self):
-		from ocean.utils import setup_logging
+		from bench.utils import setup_logging
 
-		return setup_logging(ocean_path=self.ocean.name)
+		return setup_logging(bench_path=self.bench.name)
 
-	@step(title="Setting Up ocean Patches", success="ocean Patches Set Up")
+	@step(title="Setting Up Bench Patches", success="Bench Patches Set Up")
 	def patches(self):
 		shutil.copy(
 			os.path.join(os.path.dirname(os.path.abspath(__file__)), "patches", "patches.txt"),
-			os.path.join(self.ocean.name, "patches.txt"),
+			os.path.join(self.bench.name, "patches.txt"),
 		)
 
 	@step(title="Setting Up Backups Cronjob", success="Backups Cronjob Set Up")
@@ -432,67 +432,67 @@ class oceanSetup(Base):
 
 		from crontab import CronTab
 
-		ocean_dir = os.path.abspath(self.ocean.name)
-		user = self.ocean.conf.get("frappe_user")
-		logfile = os.path.join(ocean_dir, "logs", "backup.log")
+		bench_dir = os.path.abspath(self.bench.name)
+		user = self.bench.conf.get("frappe_user")
+		logfile = os.path.join(bench_dir, "logs", "backup.log")
 		system_crontab = CronTab(user=user)
-		backup_command = f"cd {ocean_dir} && {sys.argv[0]} --verbose --site all backup"
+		backup_command = f"cd {bench_dir} && {sys.argv[0]} --verbose --site all backup"
 		job_command = f"{backup_command} >> {logfile} 2>&1"
 
 		if job_command not in str(system_crontab):
 			job = system_crontab.new(
-				command=job_command, comment="ocean auto backups set for every 6 hours"
+				command=job_command, comment="bench auto backups set for every 6 hours"
 			)
 			job.every(6).hours()
 			system_crontab.write()
 
 		logger.log("backups were set up")
 
-	@job(title="Setting Up ocean Dependencies", success="ocean Dependencies Set Up")
+	@job(title="Setting Up Bench Dependencies", success="Bench Dependencies Set Up")
 	def requirements(self, apps=None):
-		"""Install and upgrade specified / all installed apps on given ocean"""
-		from ocean.app import App
+		"""Install and upgrade specified / all installed apps on given Bench"""
+		from bench.app import App
 
-		apps = apps or self.ocean.apps
+		apps = apps or self.bench.apps
 
 		self.pip()
 
 		print(f"Installing {len(apps)} applications...")
 
 		for app in apps:
-			path_to_app = os.path.join(self.ocean.name, "apps", app)
-			app = App(path_to_app, ocean=self.ocean, to_clone=False).install(
-				skip_assets=True, restart_ocean=False, ignore_resolution=True
+			path_to_app = os.path.join(self.bench.name, "apps", app)
+			app = App(path_to_app, bench=self.bench, to_clone=False).install(
+				skip_assets=True, restart_bench=False, ignore_resolution=True
 			)
 
 	def python(self, apps=None):
-		"""Install and upgrade Python dependencies for specified / all installed apps on given ocean"""
-		import ocean.cli
+		"""Install and upgrade Python dependencies for specified / all installed apps on given Bench"""
+		import bench.cli
 
-		apps = apps or self.ocean.apps
+		apps = apps or self.bench.apps
 
-		quiet_flag = "" if ocean.cli.verbose else "--quiet"
+		quiet_flag = "" if bench.cli.verbose else "--quiet"
 
 		self.pip()
 
 		for app in apps:
-			app_path = os.path.join(self.ocean.name, "apps", app)
+			app_path = os.path.join(self.bench.name, "apps", app)
 			log(f"\nInstalling python dependencies for {app}", level=3, no_log=True)
-			self.run(f"{self.ocean.python} -m pip install {quiet_flag} --upgrade -e {app_path}")
+			self.run(f"{self.bench.python} -m pip install {quiet_flag} --upgrade -e {app_path}")
 
 	def node(self, apps=None):
-		"""Install and upgrade Node dependencies for specified / all apps on given ocean"""
-		from ocean.utils.ocean import update_node_packages
+		"""Install and upgrade Node dependencies for specified / all apps on given Bench"""
+		from bench.utils.bench import update_node_packages
 
-		return update_node_packages(ocean_path=self.ocean.name, apps=apps)
+		return update_node_packages(bench_path=self.bench.name, apps=apps)
 
 
-class oceanTearDown:
-	def __init__(self, ocean):
-		self.ocean = ocean
+class BenchTearDown:
+	def __init__(self, bench):
+		self.bench = bench
 
 	def backups(self):
-		remove_backups_crontab(self.ocean.name)
+		remove_backups_crontab(self.bench.name)
 
 	def dirs(self):
-		shutil.rmtree(self.ocean.name)
+		shutil.rmtree(self.bench.name)

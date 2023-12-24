@@ -56,15 +56,15 @@ class Validator:
 
 
 @lru_cache(maxsize=None)
-class ocean(Base, Validator):
+class Ocean(Base, Validator):
 	def __init__(self, path):
 		self.name = path
 		self.cwd = os.path.abspath(path)
 		self.exists = is_ocean_directory(self.name)
 
-		self.setup = oceanSetup(self)
-		self.teardown = oceanTearDown(self)
-		self.apps = oceanApps(self)
+		self.setup = OceanSetup(self)
+		self.teardown = OceanTearDown(self)
+		self.apps = OceanApps(self)
 
 		self.apps_txt = os.path.join(self.name, "sites", "apps.txt")
 		self.excluded_apps_txt = os.path.join(self.name, "sites", "excluded_apps.txt")
@@ -136,12 +136,12 @@ class ocean(Base, Validator):
 		# self.build() - removed because it seems unnecessary
 		self.reload(_raise=False)
 
-	@step(title="Building ocean Assets", success="ocean Assets Built")
+	@step(title="Building Ocean Assets", success="Ocean Assets Built")
 	def build(self):
 		# build assets & stuff
 		run_frappe_cmd("build", ocean_path=self.name)
 
-	@step(title="Reloading ocean Processes", success="ocean Processes Reloaded")
+	@step(title="Reloading Ocean Processes", success="Ocean Processes Reloaded")
 	def reload(self, web=False, supervisor=True, systemd=True, _raise=True):
 		"""If web is True, only web workers are restarted"""
 		conf = self.conf
@@ -167,8 +167,8 @@ class ocean(Base, Validator):
 		]
 
 
-class oceanApps(MutableSequence):
-	def __init__(self, ocean: ocean):
+class OceanApps(MutableSequence):
+	def __init__(self, ocean: Ocean):
 		self.ocean = ocean
 		self.states_path = os.path.join(self.ocean.name, "sites", "apps.json")
 		self.apps_path = os.path.join(self.ocean.name, "apps")
@@ -328,8 +328,8 @@ class oceanApps(MutableSequence):
 		return str([x for x in self.apps])
 
 
-class oceanSetup(Base):
-	def __init__(self, ocean: ocean):
+class OceanSetup(Base):
+	def __init__(self, ocean: Ocean):
 		self.ocean = ocean
 		self.cwd = self.ocean.cwd
 
@@ -370,7 +370,7 @@ class oceanSetup(Base):
 				cwd=self.ocean.name,
 			)
 
-	@step(title="Setting Up ocean Config", success="ocean Config Set Up")
+	@step(title="Setting Up Ocean Config", success="Ocean Config Set Up")
 	def config(self, redis=True, procfile=True, additional_config=None):
 		"""Setup config folder
 		- create pids folder
@@ -418,7 +418,7 @@ class oceanSetup(Base):
 
 		return setup_logging(ocean_path=self.ocean.name)
 
-	@step(title="Setting Up ocean Patches", success="ocean Patches Set Up")
+	@step(title="Setting Up Ocean Patches", success="Ocean Patches Set Up")
 	def patches(self):
 		shutil.copy(
 			os.path.join(os.path.dirname(os.path.abspath(__file__)), "patches", "patches.txt"),
@@ -448,9 +448,9 @@ class oceanSetup(Base):
 
 		logger.log("backups were set up")
 
-	@job(title="Setting Up ocean Dependencies", success="ocean Dependencies Set Up")
+	@job(title="Setting Up Ocean Dependencies", success="Ocean Dependencies Set Up")
 	def requirements(self, apps=None):
-		"""Install and upgrade specified / all installed apps on given ocean"""
+		"""Install and upgrade specified / all installed apps on given Ocean"""
 		from ocean.app import App
 
 		apps = apps or self.ocean.apps
@@ -466,7 +466,7 @@ class oceanSetup(Base):
 			)
 
 	def python(self, apps=None):
-		"""Install and upgrade Python dependencies for specified / all installed apps on given ocean"""
+		"""Install and upgrade Python dependencies for specified / all installed apps on given Ocean"""
 		import ocean.cli
 
 		apps = apps or self.ocean.apps
@@ -481,13 +481,13 @@ class oceanSetup(Base):
 			self.run(f"{self.ocean.python} -m pip install {quiet_flag} --upgrade -e {app_path}")
 
 	def node(self, apps=None):
-		"""Install and upgrade Node dependencies for specified / all apps on given ocean"""
+		"""Install and upgrade Node dependencies for specified / all apps on given Ocean"""
 		from ocean.utils.ocean import update_node_packages
 
 		return update_node_packages(ocean_path=self.ocean.name, apps=apps)
 
 
-class oceanTearDown:
+class OceanTearDown:
 	def __init__(self, ocean):
 		self.ocean = ocean
 
