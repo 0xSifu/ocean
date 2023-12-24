@@ -49,14 +49,14 @@ requires = [
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
-path = "bench/__init__.py"
+path = "ocean/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "/bench"
+  "/ocean"
 ]
 
 [tool.hatch.build.targets.wheel]
 include = [
-  "/bench"
+  "/ocean"
 ]

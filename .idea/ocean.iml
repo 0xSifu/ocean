@@ -9,5 +9,6 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="E-commerce-Complete-Flutter-UI" />
+    <orderEntry type="module" module-name="ecommerce-admin-dashboard" />
   </component>
 </module>
