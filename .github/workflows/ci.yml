@@ -50,7 +50,7 @@ jobs:
           python -m pip install -U --no-cache-dir --force-reinstall urllib3 pyOpenSSL ndg-httpsclient pyasn1 wheel setuptools pip;
           python -m pip install -U -e ${GITHUB_WORKSPACE};
 
-      - run: python ${GITHUB_WORKSPACE}/ocean/tests/test_init.py TestBenchInit.basic
+      - run: python ${GITHUB_WORKSPACE}/ocean/tests/test_init.py TestOceanInit.basic
 
   production_setup:
     runs-on: ubuntu-latest
