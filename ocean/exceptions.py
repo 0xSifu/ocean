@@ -14,7 +14,7 @@ class CommandFailedError(Exception):
 	pass
 
 
-class BenchNotFoundError(Exception):
+class OceanNotFoundError(Exception):
 	pass
 
 
@@ -26,7 +26,7 @@ class AppNotInstalledError(ValidationError):
 	pass
 
 
-class CannotUpdateReleaseBench(ValidationError):
+class CannotUpdateReleaseOcean(ValidationError):
 	pass
 
 
@@ -34,7 +34,7 @@ class FeatureDoesNotExistError(CommandFailedError):
 	pass
 
 
-class NotInBenchDirectoryError(Exception):
+class NotInOceanDirectoryError(Exception):
 	pass
 
 

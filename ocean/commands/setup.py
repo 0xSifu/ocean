@@ -110,9 +110,9 @@ def setup_production(user, yes=False):
 
 @click.command("backups", help="Add cronjob for bench backups")
 def setup_backups():
-	from bench.bench import Bench
+	from bench.bench import Ocean
 
-	Bench(".").setup.backups()
+	Ocean(".").setup.backups()
 
 
 @click.command("env", help="Setup Python environment for bench")
@@ -120,9 +120,9 @@ def setup_backups():
 	"--python", type=str, default="python3", help="Path to Python Executable."
 )
 def setup_env(python="python3"):
-	from bench.bench import Bench
+	from bench.bench import Ocean
 
-	return Bench(".").setup.env(python=python)
+	return Ocean(".").setup.env(python=python)
 
 
 @click.command("firewall", help="Setup firewall for system")
@@ -220,9 +220,9 @@ def setup_requirements(node=False, python=False, dev=False, apps=None):
 
 	You can optionally specify one or more apps to setup dependencies for.
 	"""
-	from bench.bench import Bench
+	from bench.bench import Ocean
 
-	bench = Bench(".")
+	bench = Ocean(".")
 
 	if not (node or python or dev):
 		bench.setup.requirements(apps=apps)
@@ -257,7 +257,7 @@ def setup_requirements(node=False, python=False, dev=False, apps=None):
 )
 @click.option("--domain", help="Domain on which you want to run bench manager")
 def setup_manager(yes=False, port=23624, domain=None):
-	from bench.bench import Bench
+	from bench.bench import Ocean
 	from bench.config.nginx import make_bench_manager_nginx_conf
 
 	create_new_site = True
@@ -276,7 +276,7 @@ def setup_manager(yes=False, port=23624, domain=None):
 	exec_cmd("bench --site bench-manager.local install-app bench_manager")
 
 	bench_path = "."
-	bench = Bench(bench_path)
+	bench = Ocean(bench_path)
 
 	if bench.conf.get("restart_supervisor_on_update") or bench.conf.get(
 		"restart_systemd_on_update"

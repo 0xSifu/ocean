@@ -1,11 +1,11 @@
 # imports - module imports
-from bench.config.common_site_config import update_config, put_config
+from ocean.config.common_site_config import update_config, put_config
 
 # imports - third party imports
 import click
 
 
-@click.group(help="Change bench configuration")
+@click.group(help="Change ocean configuration")
 def config():
 	pass
 
@@ -28,7 +28,7 @@ def config_restart_systemd_on_update(state):
 
 
 @click.command(
-	"dns_multitenant", help="Enable/Disable bench multitenancy on running bench update"
+	"dns_multitenant", help="Enable/Disable ocean multitenancy on running ocean update"
 )
 @click.argument("state", type=click.Choice(["on", "off"]))
 def config_dns_multitenant(state):
@@ -71,17 +71,17 @@ def set_common_config(configs):
 
 		common_site_config[key] = value
 
-	update_config(common_site_config, bench_path=".")
+	update_config(common_site_config, ocean_path=".")
 
 
 @click.command(
-	"remove-common-config", help="Remove specific keys from current bench's common config"
+	"remove-common-config", help="Remove specific keys from current ocean's common config"
 )
 @click.argument("keys", nargs=-1)
 def remove_common_config(keys):
-	from bench.bench import Bench
+	from ocean.ocean import Ocean
 
-	common_site_config = Bench(".").conf
+	common_site_config = Ocean(".").conf
 	for key in keys:
 		if key in common_site_config:
 			del common_site_config[key]

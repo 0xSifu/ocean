@@ -4,7 +4,7 @@ import click
 # imports - module imports
 from ocean.utils.cli import (
 	MultiCommandGroup,
-	print_bench_version,
+	print_ocean_version,
 	use_experimental_feature,
 	setup_verbosity,
 )
@@ -15,7 +15,7 @@ from ocean.utils.cli import (
 	"--version",
 	is_flag=True,
 	is_eager=True,
-	callback=print_bench_version,
+	callback=print_ocean_version,
 	expose_value=False,
 )
 @click.option(
@@ -31,13 +31,13 @@ from ocean.utils.cli import (
 	callback=setup_verbosity,
 	expose_value=False,
 )
-def bench_command(bench_path="."):
-	import bench
+def ocean_command(ocean_path="."):
+	import ocean
 
-	bench.set_frappe_version(bench_path=bench_path)
+	ocean.set_frappe_version(ocean_path=ocean_path)
 
 
-from bench.commands.make import (
+from ocean.commands.make import (
 	drop,
 	exclude_app_for_update,
 	get_app,
@@ -48,35 +48,35 @@ from bench.commands.make import (
 	remove_app,
 )
 
-bench_command.add_command(init)
-bench_command.add_command(drop)
-bench_command.add_command(get_app)
-bench_command.add_command(new_app)
-bench_command.add_command(remove_app)
-bench_command.add_command(exclude_app_for_update)
-bench_command.add_command(include_app_for_update)
-bench_command.add_command(pip)
+ocean_command.add_command(init)
+ocean_command.add_command(drop)
+ocean_command.add_command(get_app)
+ocean_command.add_command(new_app)
+ocean_command.add_command(remove_app)
+ocean_command.add_command(exclude_app_for_update)
+ocean_command.add_command(include_app_for_update)
+ocean_command.add_command(pip)
 
 
-from bench.commands.update import (
+from ocean.commands.update import (
 	retry_upgrade,
 	switch_to_branch,
 	switch_to_develop,
 	update,
 )
 
-bench_command.add_command(update)
-bench_command.add_command(retry_upgrade)
-bench_command.add_command(switch_to_branch)
-bench_command.add_command(switch_to_develop)
+ocean_command.add_command(update)
+ocean_command.add_command(retry_upgrade)
+ocean_command.add_command(switch_to_branch)
+ocean_command.add_command(switch_to_develop)
 
 
-from bench.commands.utils import (
+from ocean.commands.utils import (
 	backup_all_sites,
-	bench_src,
+	ocean_src,
 	disable_production,
 	download_translations,
-	find_benches,
+	find_oceanes,
 	migrate_env,
 	renew_lets_encrypt,
 	restart,
@@ -91,39 +91,39 @@ from bench.commands.utils import (
 	start,
 )
 
-bench_command.add_command(start)
-bench_command.add_command(restart)
-bench_command.add_command(set_nginx_port)
-bench_command.add_command(set_ssl_certificate)
-bench_command.add_command(set_ssl_certificate_key)
-bench_command.add_command(set_url_root)
-bench_command.add_command(set_mariadb_host)
-bench_command.add_command(set_redis_cache_host)
-bench_command.add_command(set_redis_queue_host)
-bench_command.add_command(set_redis_socketio_host)
-bench_command.add_command(download_translations)
-bench_command.add_command(backup_all_sites)
-bench_command.add_command(renew_lets_encrypt)
-bench_command.add_command(disable_production)
-bench_command.add_command(bench_src)
-bench_command.add_command(find_benches)
-bench_command.add_command(migrate_env)
+ocean_command.add_command(start)
+ocean_command.add_command(restart)
+ocean_command.add_command(set_nginx_port)
+ocean_command.add_command(set_ssl_certificate)
+ocean_command.add_command(set_ssl_certificate_key)
+ocean_command.add_command(set_url_root)
+ocean_command.add_command(set_mariadb_host)
+ocean_command.add_command(set_redis_cache_host)
+ocean_command.add_command(set_redis_queue_host)
+ocean_command.add_command(set_redis_socketio_host)
+ocean_command.add_command(download_translations)
+ocean_command.add_command(backup_all_sites)
+ocean_command.add_command(renew_lets_encrypt)
+ocean_command.add_command(disable_production)
+ocean_command.add_command(ocean_src)
+ocean_command.add_command(find_oceanes)
+ocean_command.add_command(migrate_env)
 
-from bench.commands.setup import setup
+from ocean.commands.setup import setup
 
-bench_command.add_command(setup)
+ocean_command.add_command(setup)
 
 
-from bench.commands.config import config
+from ocean.commands.config import config
 
-bench_command.add_command(config)
+ocean_command.add_command(config)
 
-from bench.commands.git import remote_reset_url, remote_set_url, remote_urls
+from ocean.commands.git import remote_reset_url, remote_set_url, remote_urls
 
-bench_command.add_command(remote_set_url)
-bench_command.add_command(remote_reset_url)
-bench_command.add_command(remote_urls)
+ocean_command.add_command(remote_set_url)
+ocean_command.add_command(remote_reset_url)
+ocean_command.add_command(remote_urls)
 
-from bench.commands.install import install
+from ocean.commands.install import install
 
-bench_command.add_command(install)
+ocean_command.add_command(install)

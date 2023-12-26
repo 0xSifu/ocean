@@ -4,14 +4,14 @@ import re
 import subprocess
 
 # imports - module imports
-import bench
+import ocean
 
 
-def generate_config(bench_path):
+def generate_config(ocean_path):
 	from urllib.parse import urlparse
-	from bench.bench import Bench
+	from ocean.ocean import Ocean
 
-	config = Bench(bench_path).conf
+	config = Ocean(ocean_path).conf
 	redis_version = get_redis_version()
 
 	ports = {}
@@ -22,10 +22,10 @@ def generate_config(bench_path):
 		template_name="redis_queue.conf",
 		context={
 			"port": ports["redis_queue"],
-			"bench_path": os.path.abspath(bench_path),
+			"ocean_path": os.path.abspath(ocean_path),
 			"redis_version": redis_version,
 		},
-		bench_path=bench_path,
+		ocean_path=ocean_path,
 	)
 
 	write_redis_config(
@@ -35,11 +35,11 @@ def generate_config(bench_path):
 			"port": ports["redis_cache"],
 			"redis_version": redis_version,
 		},
-		bench_path=bench_path,
+		ocean_path=ocean_path,
 	)
 
 	# make pids folder
-	pid_path = os.path.join(bench_path, "config", "pids")
+	pid_path = os.path.join(ocean_path, "config", "pids")
 	if not os.path.exists(pid_path):
 		os.makedirs(pid_path)
 
@@ -48,22 +48,22 @@ def generate_config(bench_path):
 		return
 
 	# make ACL files
-	acl_rq_path = os.path.join(bench_path, "config", "redis_queue.acl")
-	acl_redis_cache_path = os.path.join(bench_path, "config", "redis_cache.acl")
+	acl_rq_path = os.path.join(ocean_path, "config", "redis_queue.acl")
+	acl_redis_cache_path = os.path.join(ocean_path, "config", "redis_cache.acl")
 	open(acl_rq_path, "a").close()
 	open(acl_redis_cache_path, "a").close()
 
 
-def write_redis_config(template_name, context, bench_path):
-	template = bench.config.env().get_template(template_name)
+def write_redis_config(template_name, context, ocean_path):
+	template = ocean.config.env().get_template(template_name)
 
 	if "config_path" not in context:
-		context["config_path"] = os.path.abspath(os.path.join(bench_path, "config"))
+		context["config_path"] = os.path.abspath(os.path.join(ocean_path, "config"))
 
 	if "pid_path" not in context:
 		context["pid_path"] = os.path.join(context["config_path"], "pids")
 
-	with open(os.path.join(bench_path, "config", template_name), "w") as f:
+	with open(os.path.join(ocean_path, "config", template_name), "w") as f:
 		f.write(template.render(**context))
 
 

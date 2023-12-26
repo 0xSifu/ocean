@@ -4,67 +4,67 @@ import os
 from collections import defaultdict
 
 
-def get_site_config(site, bench_path="."):
-	config_path = os.path.join(bench_path, "sites", site, "site_config.json")
+def get_site_config(site, ocean_path="."):
+	config_path = os.path.join(ocean_path, "sites", site, "site_config.json")
 	if not os.path.exists(config_path):
 		return {}
 	with open(config_path) as f:
 		return json.load(f)
 
 
-def put_site_config(site, config, bench_path="."):
-	config_path = os.path.join(bench_path, "sites", site, "site_config.json")
+def put_site_config(site, config, ocean_path="."):
+	config_path = os.path.join(ocean_path, "sites", site, "site_config.json")
 	with open(config_path, "w") as f:
 		return json.dump(config, f, indent=1)
 
 
-def update_site_config(site, new_config, bench_path="."):
-	config = get_site_config(site, bench_path=bench_path)
+def update_site_config(site, new_config, ocean_path="."):
+	config = get_site_config(site, ocean_path=ocean_path)
 	config.update(new_config)
-	put_site_config(site, config, bench_path=bench_path)
+	put_site_config(site, config, ocean_path=ocean_path)
 
 
-def set_nginx_port(site, port, bench_path=".", gen_config=True):
+def set_nginx_port(site, port, ocean_path=".", gen_config=True):
 	set_site_config_nginx_property(
-		site, {"nginx_port": port}, bench_path=bench_path, gen_config=gen_config
+		site, {"nginx_port": port}, ocean_path=ocean_path, gen_config=gen_config
 	)
 
 
-def set_ssl_certificate(site, ssl_certificate, bench_path=".", gen_config=True):
+def set_ssl_certificate(site, ssl_certificate, ocean_path=".", gen_config=True):
 	set_site_config_nginx_property(
 		site,
 		{"ssl_certificate": ssl_certificate},
-		bench_path=bench_path,
+		ocean_path=ocean_path,
 		gen_config=gen_config,
 	)
 
 
-def set_ssl_certificate_key(site, ssl_certificate_key, bench_path=".", gen_config=True):
+def set_ssl_certificate_key(site, ssl_certificate_key, ocean_path=".", gen_config=True):
 	set_site_config_nginx_property(
 		site,
 		{"ssl_certificate_key": ssl_certificate_key},
-		bench_path=bench_path,
+		ocean_path=ocean_path,
 		gen_config=gen_config,
 	)
 
 
-def set_site_config_nginx_property(site, config, bench_path=".", gen_config=True):
-	from bench.config.nginx import make_nginx_conf
-	from bench.bench import Bench
+def set_site_config_nginx_property(site, config, ocean_path=".", gen_config=True):
+	from ocean.config.nginx import make_nginx_conf
+	from ocean.ocean import Ocean
 
-	if site not in Bench(bench_path).sites:
+	if site not in Ocean(ocean_path).sites:
 		raise Exception("No such site")
-	update_site_config(site, config, bench_path=bench_path)
+	update_site_config(site, config, ocean_path=ocean_path)
 	if gen_config:
-		make_nginx_conf(bench_path=bench_path)
+		make_nginx_conf(ocean_path=ocean_path)
 
 
-def set_url_root(site, url_root, bench_path="."):
-	update_site_config(site, {"host_name": url_root}, bench_path=bench_path)
+def set_url_root(site, url_root, ocean_path="."):
+	update_site_config(site, {"host_name": url_root}, ocean_path=ocean_path)
 
 
-def add_domain(site, domain, ssl_certificate, ssl_certificate_key, bench_path="."):
-	domains = get_domains(site, bench_path)
+def add_domain(site, domain, ssl_certificate, ssl_certificate_key, ocean_path="."):
+	domains = get_domains(site, ocean_path)
 	for d in domains:
 		if (isinstance(d, dict) and d["domain"] == domain) or d == domain:
 			print(f"Domain {domain} already exists")
@@ -78,23 +78,23 @@ def add_domain(site, domain, ssl_certificate, ssl_certificate_key, bench_path=".
 		}
 
 	domains.append(domain)
-	update_site_config(site, {"domains": domains}, bench_path=bench_path)
+	update_site_config(site, {"domains": domains}, ocean_path=ocean_path)
 
 
-def remove_domain(site, domain, bench_path="."):
-	domains = get_domains(site, bench_path)
+def remove_domain(site, domain, ocean_path="."):
+	domains = get_domains(site, ocean_path)
 	for i, d in enumerate(domains):
 		if (isinstance(d, dict) and d["domain"] == domain) or d == domain:
 			domains.remove(d)
 			break
 
-	update_site_config(site, {"domains": domains}, bench_path=bench_path)
+	update_site_config(site, {"domains": domains}, ocean_path=ocean_path)
 
 
-def sync_domains(site, domains, bench_path="."):
+def sync_domains(site, domains, ocean_path="."):
 	"""Checks if there is a change in domains. If yes, updates the domains list."""
 	changed = False
-	existing_domains = get_domains_dict(get_domains(site, bench_path))
+	existing_domains = get_domains_dict(get_domains(site, ocean_path))
 	new_domains = get_domains_dict(domains)
 
 	if set(existing_domains.keys()) != set(new_domains.keys()):
@@ -108,13 +108,13 @@ def sync_domains(site, domains, bench_path="."):
 
 	if changed:
 		# replace existing domains with this one
-		update_site_config(site, {"domains": domains}, bench_path=".")
+		update_site_config(site, {"domains": domains}, ocean_path=".")
 
 	return changed
 
 
-def get_domains(site, bench_path="."):
-	return get_site_config(site, bench_path=bench_path).get("domains") or []
+def get_domains(site, ocean_path="."):
+	return get_site_config(site, ocean_path=ocean_path).get("domains") or []
 
 
 def get_domains_dict(domains):
