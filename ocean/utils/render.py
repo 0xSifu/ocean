@@ -6,7 +6,7 @@ from io import StringIO
 import click
 
 # imports - module imports
-import bench
+import ocean
 
 
 class Capturing(list):
@@ -33,9 +33,9 @@ class Capturing(list):
 
 class Rendering:
 	def __init__(self, success, title, is_parent, args, kwargs):
-		import bench.cli
+		import ocean.cli
 
-		self.dynamic_feed = bench.cli.from_command_line and bench.cli.dynamic_feed
+		self.dynamic_feed = ocean.cli.from_command_line and ocean.cli.dynamic_feed
 
 		if not self.dynamic_feed:
 			return
@@ -58,7 +58,7 @@ class Rendering:
 		self._title = self.title.format(**self.kw)
 		click.secho(f"{_hierarchy}{_prefix} {self._title}")
 
-		bench.LOG_BUFFER.append(
+		ocean.LOG_BUFFER.append(
 			{
 				"message": self._title,
 				"prefix": _prefix,
@@ -79,7 +79,7 @@ class Rendering:
 	def render_screen(self):
 		click.clear()
 
-		for l in bench.LOG_BUFFER:
+		for l in ocean.LOG_BUFFER:
 			if l["message"] == self._title:
 				l["prefix"] = self._prefix
 				l["message"] = self._success
@@ -89,7 +89,7 @@ class Rendering:
 
 def job(title: str = None, success: str = None):
 	"""Supposed to be wrapped around an atomic job in a given process.
-	For instance, the `get-app` command consists of two jobs: `initializing bench`
+	For instance, the `get-app` command consists of two jobs: `initializing ocean`
 	and `fetching and installing app`.
 	"""
 

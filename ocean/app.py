@@ -175,6 +175,7 @@ class App(AppMeta):
 		self.local_resolution = []
 		super().__init__(name, branch, *args, **kwargs)
 
+
 	@step(title="Fetching App {repo}", success="App {repo} Fetched")
 	def get(self):
 		branch = f"--branch {self.tag}" if self.tag else ""
