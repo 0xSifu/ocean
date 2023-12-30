@@ -3,14 +3,14 @@ import click
 from click.core import _check_multicommand
 
 
-def print_bench_version(ctx, param, value):
-	"""Prints current bench version"""
+def print_ocean_version(ctx, param, value):
+	"""Prints current ocean version"""
 	if not value or ctx.resilient_parsing:
 		return
 
-	import bench
+	import ocean
 
-	click.echo(bench.VERSION)
+	click.echo(ocean.VERSION)
 	ctx.exit()
 
 
@@ -61,22 +61,22 @@ def use_experimental_feature(ctx, param, value):
 		return
 
 	if value == "dynamic-feed":
-		import bench.cli
+		import ocean.cli
 
-		bench.cli.dynamic_feed = True
-		bench.cli.verbose = True
+		ocean.cli.dynamic_feed = True
+		ocean.cli.verbose = True
 	else:
-		from bench.exceptions import FeatureDoesNotExistError
+		from ocean.exceptions import FeatureDoesNotExistError
 
 		raise FeatureDoesNotExistError(f"Feature {value} does not exist")
 
-	from bench.cli import is_envvar_warn_set
+	from ocean.cli import is_envvar_warn_set
 
 	if is_envvar_warn_set:
 		return
 
 	click.secho(
-		"WARNING: bench is using it's new CLI rendering engine. This behaviour has"
+		"WARNING: ocean is using it's new CLI rendering engine. This behaviour has"
 		f" been enabled by passing --{value} in the command. This feature is"
 		" experimental and may not be implemented for all commands yet.",
 		fg="yellow",
@@ -87,6 +87,6 @@ def setup_verbosity(ctx, param, value):
 	if not value:
 		return
 
-	import bench.cli
+	import ocean.cli
 
-	bench.cli.verbose = True
+	ocean.cli.verbose = True
