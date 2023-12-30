@@ -1,11 +1,11 @@
 [project]
-name = "frappe-bench"
-description = "CLI to manage Multi-tenant deployments for Frappe apps"
+name = "artix-ocean"
+description = "CLI to manage Multi-tenant deployments for Artix apps"
 readme = "README.md"
 license = "GPL-3.0-only"
 requires-python = ">=3.7"
 authors = [
-    { name = "Frappe Technologies Pvt Ltd", email = "developers@frappe.io" },
+    { name = "Artix Technologies", email = "developers@artix.io" },
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -34,7 +34,7 @@ dynamic = [
 ]
 
 [project.scripts]
-bench = "bench.cli:cli"
+artix = "artix.cli:cli"
 
 [project.urls]
 Changelog = "https://github.com/frappe/bench/releases"
