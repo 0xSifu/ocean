@@ -1,5 +1,5 @@
-VERSION = "5.0.0-dev"
-PROJECT_NAME = "frappe-ocean"
+VERSION = "1.0.0-dev"
+PROJECT_NAME = "artix-ocean"
 FRAPPE_VERSION = None
 current_path = None
 updated_path = None
